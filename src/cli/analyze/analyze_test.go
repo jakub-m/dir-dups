@@ -11,13 +11,13 @@ import (
 )
 
 func TestFindSimilarSimple(t *testing.T) {
-	left := loadNode(t, `
+	left := loadNodeFromString(t, `
 /a1/b1/c1 1
 /a1/b1/c2 2
 /a1/b1/c3 3
 `)
 
-	right := loadNode(t, `
+	right := loadNodeFromString(t, `
 /a1/b1/c1 1
 /a1/b1/c2 2
 /a1/b1/c3 3
@@ -30,12 +30,12 @@ func TestFindSimilarSimple(t *testing.T) {
 }
 
 func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
-	left := loadNode(t, `
+	left := loadNodeFromString(t, `
 /a1/b1/c1 1
 /a1/b1/c2 2
 `)
 
-	right := loadNode(t, `
+	right := loadNodeFromString(t, `
 /a1/b1/c1 1
 /a1/b1/c2 2
 /a1/b2/c3 3
@@ -80,7 +80,7 @@ func TestLoadLines(t *testing.T) {
 // test many slashes
 // test starting with root being non-empty
 
-func loadNode(t *testing.T, s string) *Node {
+func loadNodeFromString(t *testing.T, s string) *Node {
 	s = strings.Trim(s, " \n")
 	s = strings.ReplaceAll(s, " ", "\t")
 	n, err := LoadNodesFromFileList(bytes.NewBufferString(s))

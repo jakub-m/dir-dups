@@ -5,8 +5,10 @@ gofiles=$(shell find . -name \*.go)
 
 $(bin): $(gofiles)
 	go build -o bin $(gomain)
+test:
+	go test ./...
 
 clean:
 	rm -fv $(bin)
 
-.PHONY: clean
+.PHONY: clean test

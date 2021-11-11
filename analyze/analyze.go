@@ -1,4 +1,4 @@
-package main
+package analyze
 
 import (
 	"bufio"
@@ -15,8 +15,8 @@ type Node struct {
 	Name     string
 	Size     int
 	Hash     hash
-	Children map[string]*Node // node name to node
-	similar  []*Node
+	Children map[string]*Node // map children node name to node
+	Similar  []*Node          `json:"-"`
 }
 
 type hash []byte
@@ -26,7 +26,7 @@ func (h hash) Equal(other hash) bool {
 }
 
 func (n *Node) addSimilar(other *Node) {
-	n.similar = append(n.similar, other)
+	n.Similar = append(n.Similar, other)
 }
 
 func LoadNodesFromFileList(data io.Reader) (*Node, error) {
@@ -115,7 +115,7 @@ func newNode(name string) *Node {
 	return &Node{
 		Name:     name,
 		Children: make(map[string]*Node),
-		similar:  []*Node{},
+		Similar:  []*Node{},
 	}
 }
 
@@ -156,7 +156,7 @@ func FindSimilar(left *Node, right *Node) []*Node {
 
 	similar := []*Node{}
 	walk(left, func(n *Node) bool {
-		if len(n.similar) == 0 {
+		if len(n.Similar) == 0 {
 			return true
 		}
 		similar = append(similar, n)

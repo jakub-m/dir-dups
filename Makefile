@@ -1,22 +1,22 @@
 binlist=bin/listfiles
 binanalyze=bin/analyze
-golist=src/cli/listfiles/main.go
-goanalyze=src/cli/analyze/main.go
+golist=cli/listfiles/main.go
+goanalyze=cli/analyze/main.go
 
 gofiles=$(shell find . -name \*.go)
 
 default: $(binlist) $(binanalyze)
 
 $(binlist): $(gofiles)
-	go build -o bin $(golist)
+	go build -o $(binlist) $(golist)
 
 $(binanalyze): $(gofiles)
-	go build -o bin $(goanalyze)
+	go build -o $(binanalyze) $(goanalyze)
 
 test:
 	go test ./...
 
 clean:
-	rm -fv $(binlist) $(binanalyze)
+	rm -fvr bin/
 
 .PHONY: clean test

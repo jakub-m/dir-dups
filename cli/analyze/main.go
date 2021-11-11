@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"greasytoad/analyze"
 	"log"
 	"os"
 )
@@ -23,20 +24,20 @@ func main() {
 
 	log.Printf("size left: %dB", nodeLeft.Size)
 	log.Printf("size right: %dB", nodeRight.Size)
-	similars := FindSimilar(nodeLeft, nodeRight)
+	similars := analyze.FindSimilar(nodeLeft, nodeRight)
 	log.Printf("found %d similarities", len(similars))
 	for _, s := range similars {
-		for _, t := range s.similar {
+		for _, t := range s.Similar {
 			fmt.Printf("%s\t%s", s.Name, t.Name)
 		}
 	}
 }
 
-func loadNode(path string) (*Node, error) {
+func loadNode(path string) (*analyze.Node, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	return LoadNodesFromFileList(f)
+	return analyze.LoadNodesFromFileList(f)
 }

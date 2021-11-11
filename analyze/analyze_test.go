@@ -45,6 +45,7 @@ func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
 
 	assert.Equal(t, len(similar), 1)
 	assert.Equal(t, similar[0], left.Children["a1"].Children["b1"])
+	assert.Equal(t, similar[0].FullPath(), "/a1/b1")
 }
 
 func TestLoadLines(t *testing.T) {

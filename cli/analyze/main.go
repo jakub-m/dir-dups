@@ -28,7 +28,7 @@ func main() {
 	log.Printf("found %d similarities", len(similars))
 	for _, s := range similars {
 		for _, t := range s.Similar {
-			fmt.Printf("%s\t%s", s.Name, t.Name)
+			fmt.Printf("%s\t%s\n", s.FullPath(), t.FullPath())
 		}
 	}
 }

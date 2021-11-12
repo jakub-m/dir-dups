@@ -60,22 +60,27 @@ func TestLoadLines(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "", root.Name)
 	assert.Equal(t, 3, root.Size)
+	assert.Equal(t, 2, root.FileCount)
 
 	foo := root.Children["foo"]
 	assert.Equal(t, "foo", foo.Name)
 	assert.Equal(t, 3, foo.Size)
+	assert.Equal(t, 2, foo.FileCount)
 
 	bar := foo.Children["bar"]
 	assert.Equal(t, "bar", bar.Name)
 	assert.Equal(t, 1, bar.Size)
+	assert.Equal(t, 1, bar.FileCount)
 
 	baz := bar.Children["baz"]
 	assert.Equal(t, "baz", baz.Name)
 	assert.Equal(t, 1, baz.Size)
+	assert.Equal(t, 1, baz.FileCount)
 
 	quux := foo.Children["quux"]
 	assert.Equal(t, "quux", quux.Name)
 	assert.Equal(t, 2, quux.Size)
+	assert.Equal(t, 1, quux.FileCount)
 }
 
 // test many slashes

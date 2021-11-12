@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"greasytoad/analyze"
+	libstrings "greasytoad/strings"
 	"log"
 	"os"
 )
@@ -22,13 +23,13 @@ func main() {
 		log.Fatalf("cannot load file %s: %v", pathRight, err)
 	}
 
-	log.Printf("size left: %dB", nodeLeft.Size)
-	log.Printf("size right: %dB", nodeRight.Size)
+	log.Printf("size left: %s", libstrings.FormatBytes(nodeLeft.Size))
+	log.Printf("size right: %s", libstrings.FormatBytes(nodeRight.Size))
 	similars := analyze.FindSimilar(nodeLeft, nodeRight)
 	log.Printf("found %d similarities", len(similars))
 	for _, s := range similars {
 		for _, t := range s.Similar {
-			fmt.Printf("%s\t%s\n", s.FullPath(), t.FullPath())
+			fmt.Printf("%d\t%d\t%s\t%s\n", s.Size/1024, s.FileCount, s.FullPath(), t.FullPath())
 		}
 	}
 }

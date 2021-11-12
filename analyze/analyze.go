@@ -6,19 +6,20 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"log"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 type Node struct {
-	Name     string
-	Size     int
-	Hash     hash
-	Children map[string]*Node // map children node name to node
-	Similar  []*Node          `json:"-"`
-	Parent   *Node            `json:"-"`
+	Name      string
+	Size      int
+	FileCount int
+	Hash      hash
+	Children  map[string]*Node // map children node name to node
+	Similar   []*Node          `json:"-"`
+	Parent    *Node            `json:"-"`
 }
 
 type hash []byte
@@ -61,6 +62,7 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 				// last, that is the file
 				newChild := newNode(p)
 				newChild.Size = parsed.size
+				newChild.FileCount = 1
 				newChild.Parent = n
 				n.Children[p] = newChild
 			} else {
@@ -89,12 +91,14 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 		if len(node.Children) == 0 {
 			return
 		}
-		size := 0
+		size, fileCount := 0, 0
 		for _, ch := range node.Children {
 			updateSizeRec(ch)
 			size += ch.Size
+			fileCount += ch.FileCount
 		}
 		node.Size = size
+		node.FileCount = fileCount
 	}
 	updateSizeRec(root)
 
@@ -162,9 +166,10 @@ func FindSimilar(left *Node, right *Node) []*Node {
 	indexRight := indexNodes(right)
 
 	// O(n^2) ahead
+	os.Stderr.WriteString("\n")
 	for i, left := range indexLeft {
-		if i%1000 == 0 {
-			log.Printf("%d/%d\n", i+0, len(indexLeft))
+		if i%1000 == (1000 - 1) {
+			os.Stderr.WriteString(fmt.Sprintf("%d%%     \r", (100*(i+1))/len(indexLeft)))
 		}
 		for _, right := range indexRight {
 			if isSimilar(left, right) {

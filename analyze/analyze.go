@@ -166,10 +166,9 @@ func FindSimilar(left *Node, right *Node) []*Node {
 	indexRight := indexNodes(right)
 
 	// O(n^2) ahead
-	os.Stderr.WriteString("\n")
 	for i, left := range indexLeft {
 		if i%1000 == (1000 - 1) {
-			os.Stderr.WriteString(fmt.Sprintf("%d%%     \r", (100*(i+1))/len(indexLeft)))
+			os.Stderr.WriteString(fmt.Sprintf(" %d%%     \r", (100*(i+1))/len(indexLeft)))
 		}
 		for _, right := range indexRight {
 			if isSimilar(left, right) {

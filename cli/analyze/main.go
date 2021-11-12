@@ -14,10 +14,12 @@ func main() {
 	}
 
 	pathLeft, pathRight := os.Args[1], os.Args[2]
+	log.Printf("loading: %s", pathLeft)
 	nodeLeft, err := loadNode(pathLeft)
 	if err != nil {
 		log.Fatalf("cannot load file %s: %v", pathLeft, err)
 	}
+	log.Printf("loading: %s", pathRight)
 	nodeRight, err := loadNode(pathRight)
 	if err != nil {
 		log.Fatalf("cannot load file %s: %v", pathRight, err)

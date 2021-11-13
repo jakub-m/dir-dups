@@ -101,8 +101,29 @@ func TestLoadLines(t *testing.T) {
 	assert.Equal(t, 1, quux.FileCount)
 }
 
-// test many slashes
-// test starting with root being non-empty
+func TestNoUnknownSimilarity(t *testing.T) {
+	left := loadNodeFromString(t, `
+/a1/b1/c1 1
+/a1/b1/c2 1
+/a1/b2/c1 1
+/a1/b2/c10 10
+`)
+
+	right := loadNodeFromString(t, `
+/a2/b1/c1 1
+/a2/b1/c2 1
+/a2/b2/c1 1
+/a2/b2/c2 1
+/a2/b2/c3 1
+`)
+
+	AnalyzeDuplicates(left, right)
+	Walk(left, func(n *Node) bool {
+		t.Logf("%s %s", n.SimilarityType, n.FullPath())
+		assert.NotEqual(t, Unknown, n.SimilarityType, "Unknown similarity type for: `%s`", n.FullPath())
+		return true
+	})
+}
 
 func loadNodeFromString(t *testing.T, s string) *Node {
 	s = strings.Trim(s, " \n")

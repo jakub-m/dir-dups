@@ -52,9 +52,9 @@ func (s SimilarityType) String() string {
 	case FullDuplicate:
 		return "D"
 	case WeakDuplicate:
-		return "w"
+		return "d"
 	case PartiallyUnique:
-		return "p"
+		return "u"
 	case Unique:
 		return "U"
 	default:

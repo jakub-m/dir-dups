@@ -18,17 +18,48 @@ func (h hash) Equal(other hash) bool {
 }
 
 type Node struct {
-	Name      string
-	Size      int
-	FileCount int
-	Hash      hash
-	Children  map[string]*Node // map children node name to node
-	Similar   []*Node          `json:"-"`
-	Parent    *Node            `json:"-"`
+	Name           string
+	Size           int
+	FileCount      int
+	Hash           hash
+	Children       map[string]*Node // map children node name to node
+	SimilarityType SimilarityType
+	// Similar nodes have the same hash.
+	Similar []*Node `json:"-"`
+	Parent  *Node   `json:"-"`
 }
 
-func (n *Node) addSimilar(other *Node) {
-	n.Similar = append(n.Similar, other)
+type SimilarityType int
+
+const (
+	// Unknown is a zero value.
+	Unknown SimilarityType = iota
+	// FullDuplicate hashes are equal. it means that files are the same..
+	FullDuplicate
+	// WeakDuplicate applicable only for directory, it means that all the content of a directory
+	// is a full duplicate, but the structure of the files is not the same.
+	WeakDuplicate
+	// PartiallyUnique for directory, some of the content is not duplicated.
+	PartiallyUnique
+	// Unique not duplicated.
+	Unique
+)
+
+func (s SimilarityType) String() string {
+	switch s {
+	case Unknown:
+		return "x"
+	case FullDuplicate:
+		return "D"
+	case WeakDuplicate:
+		return "w"
+	case PartiallyUnique:
+		return "p"
+	case Unique:
+		return "U"
+	default:
+		return "?"
+	}
 }
 
 func (n *Node) FullPath() string {
@@ -42,6 +73,10 @@ func (n *Node) FullPath() string {
 		parts[i], parts[j] = parts[j], parts[i]
 	}
 	return strings.Join(parts, "/")
+}
+
+func (n *Node) IsFile() bool {
+	return len(n.Children) == 0
 }
 
 func LoadNodesFromFileList(data io.Reader) (*Node, error) {
@@ -87,7 +122,7 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 	// recalculate sizes
 	var updateSizeRec func(node *Node)
 	updateSizeRec = func(node *Node) {
-		if len(node.Children) == 0 {
+		if node.IsFile() {
 			return
 		}
 		size, fileCount := 0, 0
@@ -116,7 +151,7 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 
 func calculateHash(node *Node) hash {
 	h := fnv.New64a()
-	if len(node.Children) == 0 {
+	if node.IsFile() {
 		// a file derives the hash from name and size
 		io.WriteString(h, fmt.Sprintf("%s %d", node.Name, node.Size))
 	} else {
@@ -129,9 +164,14 @@ func calculateHash(node *Node) hash {
 		sort.Slice(children, func(i, j int) bool {
 			return children[i].Name < children[j].Name
 		})
-		for _, ch := range children {
-			b := []byte(strconv.Itoa(int(ch.Hash)))
-			h.Write(b)
+		if len(children) == 1 {
+			// bubble up hash of a single child.
+			return children[0].Hash
+		} else {
+			for _, ch := range children {
+				b := []byte(strconv.Itoa(int(ch.Hash)))
+				h.Write(b)
+			}
 		}
 	}
 
@@ -167,8 +207,7 @@ func parseLine(line string) (parsed, error) {
 	return parsed, nil
 }
 
-func FindSimilar(left *Node, right *Node) []*Node {
-
+func AnalyzeDuplicates(left, right *Node) {
 	indexLeft := indexNodesByHash(left)
 	indexRight := indexNodesByHash(right)
 
@@ -176,30 +215,95 @@ func FindSimilar(left *Node, right *Node) []*Node {
 	leftOnly, overlap, rightOnly := findHashOverlap(indexLeft, indexRight)
 	log.Printf("hashes: left only %d, overlap %d, right only %d", len(leftOnly), len(overlap), len(rightOnly))
 
+	// cross-reference similar nodes.
 	for h := range overlap {
 		for _, leftNode := range indexLeft[h] {
-			for _, rightNode := range indexRight[h] {
-				leftNode.addSimilar(rightNode)
-				rightNode.addSimilar(leftNode)
-			}
+			leftNode.Similar = indexRight[h]
+		}
+		for _, rightNode := range indexRight[h] {
+			rightNode.Similar = indexLeft[h]
 		}
 	}
 
-	similar := []*Node{}
-	walk(left, func(n *Node) bool {
-		if len(n.Similar) == 0 {
+	var updateSimilarityRec func(*Node)
+
+	updateSimilarityRec = func(node *Node) {
+		for _, ch := range node.Children {
+			// guarantee that the children have the status already set.
+			updateSimilarityRec(ch)
+		}
+		if len(node.Similar) > 0 {
+			// there are nodes with similar hashes, so it is a duplicate.
+			node.SimilarityType = FullDuplicate
+			return
+		}
+		if node.IsFile() {
+			// a file without similar nodes is a unique.
+			node.SimilarityType = Unique
+			return
+		}
+
+		fullOrWeakDuplicate := func(n *Node) bool {
+			return n.SimilarityType == FullDuplicate || n.SimilarityType == WeakDuplicate
+		}
+		uniqueOrPartiallyUnique := func(n *Node) bool {
+			return n.SimilarityType == Unique || n.SimilarityType == PartiallyUnique
+		}
+		unknown := func(n *Node) bool {
+			return n.SimilarityType == Unknown
+		}
+
+		// all child nodes are full duplicates, but not necessarily in a similar file tree.
+		// this node is marked as weak duplicate.
+		if allChildren(node, fullOrWeakDuplicate) {
+			node.SimilarityType = WeakDuplicate
+			return
+		}
+
+		if someChildren(node, unknown) {
+			node.SimilarityType = Unknown
+			return
+		}
+
+		if someChildren(node, fullOrWeakDuplicate) &&
+			someChildren(node, uniqueOrPartiallyUnique) &&
+			noChildren(node, unknown) {
+			node.SimilarityType = PartiallyUnique
+			return
+		}
+
+		node.SimilarityType = Unknown
+	}
+
+	updateSimilarityRec(left)
+	updateSimilarityRec(right)
+}
+
+func allChildren(node *Node, cond func(*Node) bool) bool {
+	for _, ch := range node.Children {
+		if !cond(ch) {
+			return false
+		}
+	}
+	return true
+}
+
+func someChildren(node *Node, cond func(*Node) bool) bool {
+	for _, ch := range node.Children {
+		if cond(ch) {
 			return true
 		}
-		similar = append(similar, n)
-		return false // don't continue if found similar
-	})
+	}
+	return false
+}
 
-	return similar
+func noChildren(node *Node, cond func(*Node) bool) bool {
+	return !someChildren(node, cond)
 }
 
 func indexNodesByHash(root *Node) map[hash][]*Node {
 	m := make(map[hash][]*Node)
-	walk(root, func(n *Node) bool {
+	Walk(root, func(n *Node) bool {
 		nodes, ok := m[n.Hash]
 		if !ok {
 			m[n.Hash] = []*Node{n}
@@ -236,11 +340,12 @@ func findHashOverlap(left, right map[hash][]*Node) (leftOnly, overlap, rightOnly
 	return
 }
 
-func walk(root *Node, onNode func(*Node) bool) {
+// Walk traverses the node tree. onNode return a boolean flagging if the function chould descend or not.
+func Walk(root *Node, onNode func(*Node) bool) {
 	var walkRec func(root *Node, onNode func(*Node) bool)
 
 	walkRec = func(root *Node, onNode func(*Node) bool) {
-		if shouldDescent := onNode(root); shouldDescent {
+		if shouldDescend := onNode(root); shouldDescend {
 			for _, child := range root.Children {
 				walkRec(child, onNode)
 			}

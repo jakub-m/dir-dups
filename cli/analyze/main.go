@@ -27,13 +27,32 @@ func main() {
 
 	log.Printf("size left: %s", libstrings.FormatBytes(nodeLeft.Size))
 	log.Printf("size right: %s", libstrings.FormatBytes(nodeRight.Size))
-	similars := analyze.FindSimilar(nodeLeft, nodeRight)
-	log.Printf("found %d similarities", len(similars))
-	for _, s := range similars {
-		for _, t := range s.Similar {
-			fmt.Printf("%d\t%d\t%s\t%s\n", s.Size/1024, s.FileCount, s.FullPath(), t.FullPath())
+	analyze.AnalyzeDuplicates(nodeLeft, nodeRight)
+
+	analyze.Walk(nodeLeft, func(node *analyze.Node) bool {
+		if len(node.Similar) == 0 {
+			fmt.Printf(
+				"%s\t%d\t%d\t%s\n",
+				node.SimilarityType,
+				node.Size/1024,
+				node.FileCount,
+				node.FullPath(),
+			)
+		} else {
+			for _, sim := range node.Similar {
+				fmt.Printf(
+					"%s\t%d\t%d\t%s\t%s\n",
+					node.SimilarityType,
+					node.Size/1024,
+					node.FileCount,
+					node.FullPath(),
+					sim.FullPath(),
+				)
+
+			}
 		}
-	}
+		return node.SimilarityType != analyze.FullDuplicate
+	})
 }
 
 func loadNode(path string) (*analyze.Node, error) {

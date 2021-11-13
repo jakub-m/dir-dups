@@ -23,10 +23,30 @@ func TestFindSimilarSimple(t *testing.T) {
 /a1/b1/c3 3
 `)
 
-	similar := FindSimilar(left, right)
+	AnalyzeDuplicates(left, right)
 
-	assert.Equal(t, len(similar), 1)
-	assert.Equal(t, similar[0], left)
+	assert.Equal(t, 1, len(left.Similar))
+	assert.Equal(t, right, left.Similar[0])
+	assert.Equal(t, FullDuplicate, left.SimilarityType)
+}
+
+func TestHash(t *testing.T) {
+	node := loadNodeFromString(t, `
+/a1/b1/c1 1
+/a1/b1/c2 2
+/a2/b2/c1 1 
+`)
+	// printNode(t, "node", node)
+
+	assert.Equal(t,
+		node.Children["a1"].Hash,
+		node.Children["a1"].Children["b1"].Hash)
+	assert.NotEqual(t,
+		node.Children["a1"].Children["b1"].Children["c1"].Hash,
+		node.Children["a1"].Children["b1"].Children["c2"].Hash)
+	assert.Equal(t,
+		node.Children["a1"].Children["b1"].Children["c1"].Hash,
+		node.Children["a2"].Children["b2"].Children["c1"].Hash)
 }
 
 func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
@@ -41,21 +61,19 @@ func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
 /a1/b2/c3 3
 `)
 
-	similar := FindSimilar(left, right)
-
-	assert.Equal(t, len(similar), 1)
-	assert.Equal(t, similar[0], left.Children["a1"].Children["b1"])
-	assert.Equal(t, similar[0].FullPath(), "/a1/b1")
+	// printNode(t, "left", left)
+	// printNode(t, "right", left)
+	AnalyzeDuplicates(left, right)
+	assert.Equal(t, 1, len(left.Similar))
+	// assert.Equal(t, right.Children["a1"].Children["b1"], left.Similar[0])
+	// assert.Equal(t, similar[0], left.Children["a1"].Children["b1"])
+	// assert.Equal(t, similar[0].FullPath(), "/a1/b1")
 }
 
 func TestLoadLines(t *testing.T) {
 	r := bytes.NewBufferString("/foo/bar/baz\t1\n/foo/quux\t2")
 	root, err := LoadNodesFromFileList(r)
-	if j, err := json.MarshalIndent(root, "", " "); err == nil {
-		fmt.Println(string(j))
-	} else {
-		fmt.Println(err)
-	}
+	// printNode(t, "node", root)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "", root.Name)
@@ -94,4 +112,13 @@ func loadNodeFromString(t *testing.T, s string) *Node {
 		t.Fatal(err)
 	}
 	return n
+}
+
+func printNode(t *testing.T, label string, n *Node) {
+	if j, err := json.MarshalIndent(n, "", " "); err == nil {
+		t.Log(string(j))
+		fmt.Printf("%s:\n%s\n", label, string(j))
+	} else {
+		t.Log(err)
+	}
 }

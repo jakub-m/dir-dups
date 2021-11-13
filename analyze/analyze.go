@@ -12,6 +12,12 @@ import (
 	"strings"
 )
 
+type hash []byte
+
+func (h hash) Equal(other hash) bool {
+	return bytes.Equal(h, other)
+}
+
 type Node struct {
 	Name      string
 	Size      int
@@ -20,12 +26,6 @@ type Node struct {
 	Children  map[string]*Node // map children node name to node
 	Similar   []*Node          `json:"-"`
 	Parent    *Node            `json:"-"`
-}
-
-type hash []byte
-
-func (h hash) Equal(other hash) bool {
-	return bytes.Equal(h, other)
 }
 
 func (n *Node) addSimilar(other *Node) {
@@ -117,18 +117,24 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 
 func calculateHash(node *Node) hash {
 	h := md5.New()
-	io.WriteString(h, fmt.Sprintf("%s %d", node.Name, node.Size))
+	if len(node.Children) == 0 {
+		// a file derives the hash from name and size
+		io.WriteString(h, fmt.Sprintf("%s %d", node.Name, node.Size))
+	} else {
+		// a directory derives the hash from its children. Does not take into account
+		// directory name, so we can find changed dirs with the same content.
+		children := []*Node{}
+		for _, ch := range node.Children {
+			children = append(children, ch)
+		}
+		sort.Slice(children, func(i, j int) bool {
+			return children[i].Name < children[j].Name
+		})
+		for _, ch := range children {
+			h.Write(ch.Hash)
+		}
+	}
 
-	children := []*Node{}
-	for _, ch := range node.Children {
-		children = append(children, ch)
-	}
-	sort.Slice(children, func(i, j int) bool {
-		return children[i].Name < children[j].Name
-	})
-	for _, ch := range children {
-		h.Write(ch.Hash)
-	}
 	return h.Sum(nil)
 }
 

@@ -119,7 +119,11 @@ func TestNoUnknownSimilarity(t *testing.T) {
 
 	AnalyzeDuplicates(left, right)
 	Walk(left, func(n *Node) bool {
-		t.Logf("%s %s", n.SimilarityType, n.FullPath())
+		t.Logf("%s `%s`", n.SimilarityType, n.FullPath())
+		return true
+	})
+
+	Walk(left, func(n *Node) bool {
 		assert.NotEqual(t, Unknown, n.SimilarityType, "Unknown similarity type for: `%s`", n.FullPath())
 		return true
 	})

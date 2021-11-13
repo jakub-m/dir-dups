@@ -65,14 +65,19 @@ func (s SimilarityType) String() string {
 func (n *Node) FullPath() string {
 	parts := []string{}
 
-	for n != nil {
-		parts = append(parts, n.Name)
-		n = n.Parent
+	d := n
+	for d != nil {
+		parts = append(parts, d.Name)
+		d = d.Parent
 	}
 	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
 		parts[i], parts[j] = parts[j], parts[i]
 	}
-	return strings.Join(parts, "/")
+	if !n.IsFile() {
+		parts = append(parts, "") // append / to dir
+	}
+	s := strings.Join(parts, "/")
+	return s
 }
 
 func (n *Node) IsFile() bool {
@@ -246,6 +251,9 @@ func AnalyzeDuplicates(left, right *Node) {
 		fullOrWeakDuplicate := func(n *Node) bool {
 			return n.SimilarityType == FullDuplicate || n.SimilarityType == WeakDuplicate
 		}
+		unique := func(n *Node) bool {
+			return n.SimilarityType == Unique
+		}
 		uniqueOrPartiallyUnique := func(n *Node) bool {
 			return n.SimilarityType == Unique || n.SimilarityType == PartiallyUnique
 		}
@@ -259,17 +267,24 @@ func AnalyzeDuplicates(left, right *Node) {
 			node.SimilarityType = WeakDuplicate
 			return
 		}
-
-		if someChildren(node, unknown) {
-			node.SimilarityType = Unknown
+		if allChildren(node, unique) {
+			node.SimilarityType = Unique
 			return
 		}
-
+		if allChildren(node, uniqueOrPartiallyUnique) {
+			node.SimilarityType = PartiallyUnique
+			return
+		}
 		if someChildren(node, fullOrWeakDuplicate) &&
 			someChildren(node, uniqueOrPartiallyUnique) &&
 			noChildren(node, unknown) {
 			node.SimilarityType = PartiallyUnique
 			return
+		}
+
+		log.Printf("xxx %s (len %d)", node.FullPath(), len(node.Children))
+		for _, ch := range node.Children {
+			log.Printf("xxx %s %s", ch.SimilarityType, ch.FullPath())
 		}
 
 		node.SimilarityType = Unknown

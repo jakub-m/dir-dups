@@ -2,9 +2,8 @@ package analyze
 
 import (
 	"bufio"
-	"bytes"
-	"crypto/md5"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"os"
 	"sort"
@@ -12,10 +11,10 @@ import (
 	"strings"
 )
 
-type hash []byte
+type hash uint64
 
 func (h hash) Equal(other hash) bool {
-	return bytes.Equal(h, other)
+	return h == other
 }
 
 type Node struct {
@@ -116,7 +115,7 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 }
 
 func calculateHash(node *Node) hash {
-	h := md5.New()
+	h := fnv.New64a()
 	if len(node.Children) == 0 {
 		// a file derives the hash from name and size
 		io.WriteString(h, fmt.Sprintf("%s %d", node.Name, node.Size))
@@ -131,11 +130,12 @@ func calculateHash(node *Node) hash {
 			return children[i].Name < children[j].Name
 		})
 		for _, ch := range children {
-			h.Write(ch.Hash)
+			b := []byte(strconv.Itoa(int(ch.Hash)))
+			h.Write(b)
 		}
 	}
 
-	return h.Sum(nil)
+	return hash(h.Sum64())
 }
 
 func newNode(name string) *Node {
@@ -168,6 +168,7 @@ func parseLine(line string) (parsed, error) {
 }
 
 func FindSimilar(left *Node, right *Node) []*Node {
+
 	indexLeft := indexNodes(left)
 	indexRight := indexNodes(right)
 

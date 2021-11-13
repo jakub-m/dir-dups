@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"os"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -169,18 +169,18 @@ func parseLine(line string) (parsed, error) {
 
 func FindSimilar(left *Node, right *Node) []*Node {
 
-	indexLeft := indexNodes(left)
-	indexRight := indexNodes(right)
+	indexLeft := indexNodesByHash(left)
+	indexRight := indexNodesByHash(right)
 
-	// O(n^2) ahead
-	for i, left := range indexLeft {
-		if i%1000 == (1000 - 1) {
-			os.Stderr.WriteString(fmt.Sprintf(" %d%%     \r", (100*(i+1))/len(indexLeft)))
-		}
-		for _, right := range indexRight {
-			if isSimilar(left, right) {
-				left.addSimilar(right)
-				right.addSimilar(left)
+	log.Printf("hashes: left %d, right %d", len(indexLeft), len(indexRight))
+	leftOnly, overlap, rightOnly := findHashOverlap(indexLeft, indexRight)
+	log.Printf("hashes: left only %d, overlap %d, right only %d", len(leftOnly), len(overlap), len(rightOnly))
+
+	for h := range overlap {
+		for _, leftNode := range indexLeft[h] {
+			for _, rightNode := range indexRight[h] {
+				leftNode.addSimilar(rightNode)
+				rightNode.addSimilar(leftNode)
 			}
 		}
 	}
@@ -197,13 +197,43 @@ func FindSimilar(left *Node, right *Node) []*Node {
 	return similar
 }
 
-func indexNodes(root *Node) []*Node {
-	nodes := []*Node{}
+func indexNodesByHash(root *Node) map[hash][]*Node {
+	m := make(map[hash][]*Node)
 	walk(root, func(n *Node) bool {
-		nodes = append(nodes, n)
+		nodes, ok := m[n.Hash]
+		if !ok {
+			m[n.Hash] = []*Node{n}
+			return true
+		}
+		m[n.Hash] = append(nodes, n)
+		// The list will now contain parents and children with the same hash, which is not great.
+		// This could be optimized out later.
 		return true
 	})
-	return nodes
+	return m
+}
+
+func findHashOverlap(left, right map[hash][]*Node) (leftOnly, overlap, rightOnly map[hash]bool) {
+	leftOnly = make(map[hash]bool)
+	overlap = make(map[hash]bool)
+	rightOnly = make(map[hash]bool)
+
+	for h := range left {
+		if _, ok := right[h]; ok {
+			overlap[h] = true
+		} else {
+			leftOnly[h] = true
+		}
+	}
+	for h := range right {
+		if _, ok := left[h]; ok {
+			overlap[h] = true
+		} else {
+			rightOnly[h] = true
+		}
+	}
+
+	return
 }
 
 func walk(root *Node, onNode func(*Node) bool) {
@@ -218,9 +248,4 @@ func walk(root *Node, onNode func(*Node) bool) {
 	}
 
 	walkRec(root, onNode)
-}
-
-func isSimilar(left, right *Node) bool {
-	// Here one can implement not-exact similarity. For now, depend on hash.
-	return left.Hash.Equal(right.Hash)
 }

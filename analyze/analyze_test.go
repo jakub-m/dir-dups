@@ -25,8 +25,10 @@ func TestFindSimilarSimple(t *testing.T) {
 
 	AnalyzeDuplicates(left, right)
 
-	assert.Equal(t, 1, len(left.Similar))
-	assert.Equal(t, right, left.Similar[0])
+	assert.Equal(t, 3, len(left.Similar))
+	assert.Contains(t, left.Similar, right)
+	assert.Contains(t, left.Similar, right.Children["a1"])
+	assert.Contains(t, left.Similar, right.Children["a1"].Children["b1"])
 	assert.Equal(t, FullDuplicate, left.SimilarityType)
 }
 

@@ -44,6 +44,16 @@ func main() {
 		// childeren must be full duplicates as well. Same with uniques.
 		return !(node.SimilarityType == analyze.FullDuplicate || node.SimilarityType == analyze.Unique)
 	})
+	analyze.Walk(nodeRight, func(node *analyze.Node) bool {
+		// Print only nodes that do not have similarities. those with similarities were already
+		// duplicates of nodeLeft tree.
+		if len(node.Similar) == 0 {
+			printNode(os.Stdout, node)
+			// } else {
+			// 	printNodeWithSimilar(os.Stdout, node)
+		}
+		return !(node.SimilarityType == analyze.FullDuplicate || node.SimilarityType == analyze.Unique)
+	})
 }
 
 func loadNode(path string) (*analyze.Node, error) {

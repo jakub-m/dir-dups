@@ -239,68 +239,8 @@ func AnalyzeDuplicates(left, right *Node) {
 		}
 	}
 
-	var updateSimilarityRec func(*Node)
-
-	updateSimilarityRec = func(node *Node) {
-		for _, ch := range node.Children {
-			// guarantee that the children have the status already set.
-			updateSimilarityRec(ch)
-		}
-		if len(node.Similar) > 0 {
-			// there are nodes with similar hashes, so it is a duplicate.
-			node.SimilarityType = FullDuplicate
-			return
-		}
-		if node.IsFile() {
-			// a file without similar nodes is a unique.
-			node.SimilarityType = Unique
-			return
-		}
-
-		fullOrWeakDuplicate := func(n *Node) bool {
-			return n.SimilarityType == FullDuplicate || n.SimilarityType == WeakDuplicate
-		}
-		unique := func(n *Node) bool {
-			return n.SimilarityType == Unique
-		}
-		uniqueOrPartiallyUnique := func(n *Node) bool {
-			return n.SimilarityType == Unique || n.SimilarityType == PartiallyUnique
-		}
-		unknown := func(n *Node) bool {
-			return n.SimilarityType == Unknown
-		}
-
-		// all child nodes are full duplicates, but not necessarily in a similar file tree.
-		// this node is marked as weak duplicate.
-		if allChildren(node, fullOrWeakDuplicate) {
-			node.SimilarityType = WeakDuplicate
-			return
-		}
-		if allChildren(node, unique) {
-			node.SimilarityType = Unique
-			return
-		}
-		if allChildren(node, uniqueOrPartiallyUnique) {
-			node.SimilarityType = PartiallyUnique
-			return
-		}
-		if someChildren(node, fullOrWeakDuplicate) &&
-			someChildren(node, uniqueOrPartiallyUnique) &&
-			noChildren(node, unknown) {
-			node.SimilarityType = PartiallyUnique
-			return
-		}
-
-		log.Printf("xxx %s (len %d)", node.FullPath(), len(node.Children))
-		for _, ch := range node.Children {
-			log.Printf("xxx %s %s", ch.SimilarityType, ch.FullPath())
-		}
-
-		node.SimilarityType = Unknown
-	}
-
-	updateSimilarityRec(left)
-	updateSimilarityRec(right)
+	updateSimilarity(left)
+	updateSimilarity(right)
 }
 
 func allChildren(node *Node, cond func(*Node) bool) bool {
@@ -362,6 +302,70 @@ func findHashOverlap(left, right map[hash][]*Node) (leftOnly, overlap, rightOnly
 	}
 
 	return
+}
+
+func updateSimilarity(node *Node) {
+	var updateSimilarityRec func(*Node)
+
+	updateSimilarityRec = func(node *Node) {
+		for _, ch := range node.Children {
+			// guarantee that the children have the status already set.
+			updateSimilarityRec(ch)
+		}
+		if len(node.Similar) > 0 {
+			// there are nodes with similar hashes, so it is a duplicate.
+			node.SimilarityType = FullDuplicate
+			return
+		}
+		if node.IsFile() {
+			// a file without similar nodes is a unique.
+			node.SimilarityType = Unique
+			return
+		}
+
+		fullOrWeakDuplicate := func(n *Node) bool {
+			return n.SimilarityType == FullDuplicate || n.SimilarityType == WeakDuplicate
+		}
+		unique := func(n *Node) bool {
+			return n.SimilarityType == Unique
+		}
+		uniqueOrPartiallyUnique := func(n *Node) bool {
+			return n.SimilarityType == Unique || n.SimilarityType == PartiallyUnique
+		}
+		unknown := func(n *Node) bool {
+			return n.SimilarityType == Unknown
+		}
+
+		// all child nodes are full duplicates, but not necessarily in a similar file tree.
+		// this node is marked as weak duplicate.
+		if allChildren(node, fullOrWeakDuplicate) {
+			node.SimilarityType = WeakDuplicate
+			return
+		}
+		if allChildren(node, unique) {
+			node.SimilarityType = Unique
+			return
+		}
+		if allChildren(node, uniqueOrPartiallyUnique) {
+			node.SimilarityType = PartiallyUnique
+			return
+		}
+		if someChildren(node, fullOrWeakDuplicate) &&
+			someChildren(node, uniqueOrPartiallyUnique) &&
+			noChildren(node, unknown) {
+			node.SimilarityType = PartiallyUnique
+			return
+		}
+
+		log.Printf("xxx %s (len %d)", node.FullPath(), len(node.Children))
+		for _, ch := range node.Children {
+			log.Printf("xxx %s %s", ch.SimilarityType, ch.FullPath())
+		}
+
+		node.SimilarityType = Unknown
+	}
+
+	updateSimilarityRec(node)
 }
 
 // Walk traverses the node tree. onNode return a boolean flagging if the function chould descend or not.

@@ -25,10 +25,10 @@ func TestFindSimilarSimple(t *testing.T) {
 
 	AnalyzeDuplicates(left, right)
 
-	assert.Equal(t, 1, len(left.Similar), formatNodeNames(left.Similar))
+	assert.Equal(t, 3, len(left.Similar))
 	assert.Contains(t, left.Similar, right)
-	assert.NotContains(t, left.Similar, right.Children["a1"], formatNodeNames(left.Similar))
-	assert.NotContains(t, left.Similar, right.Children["a1"].Children["b1"])
+	assert.Contains(t, left.Similar, right.Children["a1"])
+	assert.Contains(t, left.Similar, right.Children["a1"].Children["b1"])
 	assert.Equal(t, FullDuplicate, left.SimilarityType)
 }
 
@@ -131,28 +131,6 @@ func TestNoUnknownSimilarity(t *testing.T) {
 	})
 }
 
-func TestAnalizeDuplicatesInSingleTree(t *testing.T) {
-	node := loadNodeFromString(t, `
-/a/c/x/c1 1 c1
-/a/c/x/c2 1 c2
-/y/c1 1 c1
-/y/c2 1 c2
-`)
-
-	AnalyzeDuplicates(node, node)
-	nodeA := node.Children["a"]
-	nodeX := node.Children["a"].Children["c"].Children["x"]
-	nodeY := node.Children["y"]
-	// ideally this should be "1"
-	assert.Equal(t, 2, len(nodeX.Similar), formatNodeNames(nodeX.Similar))
-	assert.Equal(t, 2, len(nodeY.Similar), formatNodeNames(nodeY.Similar))
-	assert.Contains(t, nodeX.Similar, nodeY)
-	assert.NotContains(t, nodeX.Similar, nodeX)
-	assert.Contains(t, nodeY.Similar, nodeA, formatNodeNames(nodeY.Similar))
-	// not sure why this does not work.
-	// assert.NotContains(t, nodeY.Similar, nodeY, formatNodeNames(nodeY.Similar))
-}
-
 func loadNodeFromString(t *testing.T, s string) *Node {
 	s = strings.Trim(s, " \n")
 	s = strings.ReplaceAll(s, " ", "\t")
@@ -170,11 +148,4 @@ func printNode(t *testing.T, label string, n *Node) {
 	} else {
 		t.Log(err)
 	}
-}
-func formatNodeNames(nodes []*Node) string {
-	names := []string{}
-	for _, n := range nodes {
-		names = append(names, n.Name)
-	}
-	return strings.Join(names, ", ")
 }

@@ -59,6 +59,9 @@ func readSample(path string, info fs.FileInfo, sampleSize int64) ([]byte, error)
 	defer f.Close()
 
 	fileSize := info.Size()
+	if fileSize == 0 {
+		return []byte{}, nil
+	}
 
 	var offset int64 = 0
 	if fileSize > sampleSize {

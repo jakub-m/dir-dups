@@ -103,6 +103,7 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 				newChild.Size = parsed.size
 				newChild.FileCount = 1
 				newChild.Parent = n
+				newChild.Hash = calculateHashFromString(parsed.hash)
 				n.Children[p] = newChild
 			} else {
 				if p == "" {
@@ -154,11 +155,17 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 	return root, nil
 }
 
+func calculateHashFromString(s string) hash {
+	h := fnv.New64a()
+	io.WriteString(h, s)
+	return hash(h.Sum64())
+}
+
 func calculateHash(node *Node) hash {
 	h := fnv.New64a()
 	if node.IsFile() {
-		// a file derives the hash from name and size
-		io.WriteString(h, fmt.Sprintf("%s %d", node.Name, node.Size))
+		// hash for files is already calculated during ingest of the input data.
+		return node.Hash
 	} else {
 		// a directory derives the hash from its children. Does not take into account
 		// directory name, so we can find changed dirs with the same content.
@@ -194,13 +201,14 @@ func newNode(name string) *Node {
 type parsed struct {
 	path []string
 	size int
+	hash string
 }
 
 func parseLine(line string) (parsed, error) {
 	line = strings.Trim(line, "\n")
 	parts := strings.Split(line, "\t")
 	parsed := parsed{}
-	if len(parts) != 2 {
+	if len(parts) != 3 {
 		return parsed, fmt.Errorf("bad line: `%v`", line)
 	}
 	parsed.path = strings.Split(parts[0], "/")
@@ -209,6 +217,7 @@ func parseLine(line string) (parsed, error) {
 		return parsed, err
 	}
 	parsed.size = int(size)
+	parsed.hash = parts[2]
 	return parsed, nil
 }
 

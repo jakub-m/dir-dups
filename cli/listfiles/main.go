@@ -1,20 +1,15 @@
 package main
 
 import (
-	"crypto/md5"
 	"flag"
 	"fmt"
+	libhash "greasytoad/hash"
 	strings "greasytoad/strings"
 	"io/fs"
 	"io/ioutil"
 	"log"
-	"os"
 	gopath "path"
 	"sort"
-)
-
-const (
-	sampleHashSize = 1024
 )
 
 var debugEnabled = false
@@ -30,7 +25,7 @@ func main() {
 		switch {
 		case info.Mode().IsRegular():
 			size := info.Size()
-			h, err := getFullHash(path, info, sampleHashSize)
+			h, err := opts.hashFunction(path, info)
 			if err != nil {
 				return err
 			}
@@ -54,17 +49,38 @@ func main() {
 }
 
 type options struct {
-	startPath string
-	debug     bool
+	startPath    string
+	debug        bool
+	hashFunction libhash.FileHashFunc
 }
+
+const (
+	hashFuncOptionFull     = "h"
+	hashFuncOptionSample   = "s"
+	hashFuncOptionNameSize = "n"
+)
 
 func getOptions() options {
 	opts := options{}
 	flag.BoolVar(&opts.debug, "v", false, "verbose logging")
+	var hashFuncSelect string
+	flag.StringVar(&hashFuncSelect, "x", hashFuncOptionFull,
+		fmt.Sprintf("hash options. (%s) full file, (%s) sample from the middle of the file, name and size, and (%s) name and size only",
+			hashFuncOptionFull, hashFuncOptionSample, hashFuncOptionNameSize))
 	flag.Parse()
+
+	switch hashFuncSelect {
+	case hashFuncOptionFull:
+		opts.hashFunction = libhash.GetFullContentHash
+	case hashFuncOptionSample:
+		opts.hashFunction = libhash.GetSampleHash
+	case hashFuncOptionNameSize:
+		opts.hashFunction = libhash.GetNameSizeHash
+	default:
+		log.Fatalf("bad hash option: %s", hashFuncSelect)
+	}
 	if len(flag.Args()) != 1 {
-		fmt.Println("expected dir path as a first argument")
-		os.Exit(1)
+		log.Fatal("expected dir path as a first argument")
 	}
 	opts.startPath = flag.Arg(0)
 	return opts
@@ -109,57 +125,4 @@ func logDebug(format string, args ...interface{}) {
 
 func formatSize(size int64) string {
 	return strings.FormatBytes(int(size))
-}
-
-// getSampleHash returns hash of a small part of the file in the middle.
-func getSampleHash(path string, info fs.FileInfo, sampleSize int64) (hash, error) {
-	buf, err := readSample(path, info, sampleSize)
-	if err != nil {
-		return "?", err
-	}
-	h := calculateHash(buf)
-	return h, nil
-}
-
-func getFullHash(path string, info fs.FileInfo, sampleSize int64) (hash, error) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return "?", err
-	}
-	h := calculateHash(buf)
-	return h, nil
-}
-
-func readSample(path string, info fs.FileInfo, sampleSize int64) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	fileSize := info.Size()
-
-	var offset int64 = 0
-	if fileSize > sampleSize {
-		offset = (fileSize - sampleSize) / 2
-	}
-	_, err = f.Seek(offset, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	buf := make([]byte, sampleSize)
-	nRead, err := f.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	return buf[:nRead], nil
-}
-
-type hash string
-
-func calculateHash(buf []byte) hash {
-	h := md5.New()
-	h.Write(buf)
-	return hash(fmt.Sprintf("%x", h.Sum(nil)))
 }

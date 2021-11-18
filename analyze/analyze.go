@@ -239,6 +239,7 @@ func AnalyzeDuplicates(left, right *Node) {
 		}
 	}
 
+	// This takes some signifiant time
 	removeRedunantSimilarNodes(left)
 	removeRedunantSimilarNodes(right)
 

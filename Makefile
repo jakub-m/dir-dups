@@ -5,7 +5,8 @@ goanalyze=cli/analyze/main.go
 
 gofiles=$(shell find . -name \*.go)
 
-default: test $(binlist) $(binanalyze)
+default: test build
+build: $(binlist) $(binanalyze)
 
 $(binlist): $(gofiles)
 	go build -o $(binlist) $(golist)

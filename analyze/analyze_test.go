@@ -12,15 +12,15 @@ import (
 
 func TestFindSimilarSimple(t *testing.T) {
 	left := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 2
-/a1/b1/c3 3
+/a1/b1/c1 1 c11
+/a1/b1/c2 2 c22
+/a1/b1/c3 3 c33
 `)
 
 	right := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 2
-/a1/b1/c3 3
+/a1/b1/c1 1 c11
+/a1/b1/c2 2 c22
+/a1/b1/c3 3 c33
 `)
 
 	AnalyzeDuplicates(left, right)
@@ -34,9 +34,9 @@ func TestFindSimilarSimple(t *testing.T) {
 
 func TestHash(t *testing.T) {
 	node := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 2
-/a2/b2/c1 1 
+/a1/b1/c1 1 c11
+/a1/b1/c2 2 c22
+/a2/b2/c1 1 c11
 `)
 	// printNode(t, "node", node)
 
@@ -53,14 +53,14 @@ func TestHash(t *testing.T) {
 
 func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
 	left := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 2
+/a1/b1/c1 1 c11
+/a1/b1/c2 2 c22
 `)
 
 	right := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 2
-/a1/b2/c3 3
+/a1/b1/c1 1 c11
+/a1/b1/c2 2 c22
+/a1/b2/c3 3 c33
 `)
 
 	// printNode(t, "left", left)
@@ -73,7 +73,7 @@ func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
 }
 
 func TestLoadLines(t *testing.T) {
-	r := bytes.NewBufferString("/foo/bar/baz\t1\n/foo/quux\t2")
+	r := bytes.NewBufferString("/foo/bar/baz\t1\tb1\n/foo/quux\t2\tq2")
 	root, err := LoadNodesFromFileList(r)
 	// printNode(t, "node", root)
 
@@ -105,18 +105,18 @@ func TestLoadLines(t *testing.T) {
 
 func TestNoUnknownSimilarity(t *testing.T) {
 	left := loadNodeFromString(t, `
-/a1/b1/c1 1
-/a1/b1/c2 1
-/a1/b2/c1 1
-/a1/b2/c10 10
+/a1/b1/c1 1 c11
+/a1/b1/c2 1 c21
+/a1/b2/c1 1 c11
+/a1/b2/c10 10 c1010
 `)
 
 	right := loadNodeFromString(t, `
-/a2/b1/c1 1
-/a2/b1/c2 1
-/a2/b2/c1 1
-/a2/b2/c2 1
-/a2/b2/c3 1
+/a2/b1/c1 1 c11
+/a2/b1/c2 1 c21
+/a2/b2/c1 1 c11
+/a2/b2/c2 1 c21
+/a2/b2/c3 1 c31
 `)
 
 	AnalyzeDuplicates(left, right)

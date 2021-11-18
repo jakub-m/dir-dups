@@ -209,7 +209,7 @@ func parseLine(line string) (parsed, error) {
 	parts := strings.Split(line, "\t")
 	parsed := parsed{}
 	if len(parts) != 3 {
-		return parsed, fmt.Errorf("bad line: `%v`", line)
+		return parsed, fmt.Errorf("bad line: %d parts, `%v`", len(parts), line)
 	}
 	parsed.path = strings.Split(parts[0], "/")
 	size, err := strconv.ParseInt(parts[1], 10, 32)

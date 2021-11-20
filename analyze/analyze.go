@@ -217,7 +217,18 @@ func parseLine(line string) (parsed, error) {
 	return parsed, nil
 }
 
+type AnalizeOpts int32
+
+const (
+	None                 AnalizeOpts = 0
+	OptimizeSimilarities             = (1 << iota)
+)
+
 func AnalyzeDuplicates(left, right *Node) {
+	AnalyzeDuplicatesOpts(left, right, None)
+}
+
+func AnalyzeDuplicatesOpts(left, right *Node, opts AnalizeOpts) {
 	indexLeft := indexNodesByHash(left)
 	indexRight := indexNodesByHash(right)
 
@@ -233,6 +244,12 @@ func AnalyzeDuplicates(left, right *Node) {
 		for _, rightNode := range indexRight[h] {
 			rightNode.Similar = indexLeft[h]
 		}
+	}
+
+	if (opts & OptimizeSimilarities) != 0 {
+		// This might take some significant time
+		removeRedunantSimilarNodes(left)
+		removeRedunantSimilarNodes(right)
 	}
 
 	updateSimilarity(left)
@@ -298,6 +315,42 @@ func findHashOverlap(left, right map[hash][]*Node) (leftOnly, overlap, rightOnly
 	}
 
 	return
+}
+
+func removeRedunantSimilarNodes(node *Node) {
+	Walk(node, func(n *Node) bool {
+		n.Similar = filterSimilar(n.Similar)
+		n.Similar = filterDuplicate(node, n.Similar)
+		return true
+	})
+}
+
+func filterSimilar(nodes []*Node) []*Node {
+	selectedNodes := []*Node{}
+ITER_INPUT_NODES:
+	for _, node := range nodes {
+		// if node has parent that is in the input nodes then ignore it, because its parent
+		// will be reported anyway
+		if node.Parent != nil {
+			for _, potentialParent := range nodes {
+				if node.FullPath() == potentialParent.FullPath() {
+					continue ITER_INPUT_NODES
+				}
+			}
+		}
+		selectedNodes = append(selectedNodes, node)
+	}
+	return selectedNodes
+}
+
+func filterDuplicate(needle *Node, haystack []*Node) []*Node {
+	selectedNodes := []*Node{}
+	for _, n := range haystack {
+		if n.FullPath() != needle.FullPath() {
+			selectedNodes = append(selectedNodes, n)
+		}
+	}
+	return selectedNodes
 }
 
 func updateSimilarity(node *Node) {

@@ -221,7 +221,18 @@ func parseLine(line string) (parsed, error) {
 	return parsed, nil
 }
 
+type AnalizeOpts int32
+
+const (
+	None                 AnalizeOpts = 0
+	OptimizeSimilarities             = (1 << iota)
+)
+
 func AnalyzeDuplicates(left, right *Node) {
+	AnalyzeDuplicatesOpts(left, right, OptimizeSimilarities)
+}
+
+func AnalyzeDuplicatesOpts(left, right *Node, opts AnalizeOpts) {
 	indexLeft := indexNodesByHash(left)
 	indexRight := indexNodesByHash(right)
 
@@ -239,9 +250,11 @@ func AnalyzeDuplicates(left, right *Node) {
 		}
 	}
 
-	// This takes some signifiant time
-	removeRedunantSimilarNodes(left)
-	removeRedunantSimilarNodes(right)
+	if (opts & OptimizeSimilarities) != 0 {
+		// This might take some significant time
+		removeRedunantSimilarNodes(left)
+		removeRedunantSimilarNodes(right)
+	}
 
 	updateSimilarity(left)
 	updateSimilarity(right)
@@ -324,7 +337,7 @@ ITER_INPUT_NODES:
 		// will be reported anyway
 		if node.Parent != nil {
 			for _, potentialParent := range nodes {
-				if node.Parent == potentialParent {
+				if node.FullPath() == potentialParent.FullPath() {
 					continue ITER_INPUT_NODES
 				}
 			}
@@ -337,7 +350,7 @@ ITER_INPUT_NODES:
 func filterDuplicate(needle *Node, haystack []*Node) []*Node {
 	selectedNodes := []*Node{}
 	for _, n := range haystack {
-		if n != needle {
+		if n.FullPath() != needle.FullPath() {
 			selectedNodes = append(selectedNodes, n)
 		}
 	}

@@ -11,17 +11,13 @@ import (
 )
 
 func TestFindSimilarSimple(t *testing.T) {
-	left := loadNodeFromString(t, `
+	s := `
 /a1/b1/c1 1 c11
 /a1/b1/c2 2 c22
 /a1/b1/c3 3 c33
-`)
-
-	right := loadNodeFromString(t, `
-/a1/b1/c1 1 c11
-/a1/b1/c2 2 c22
-/a1/b1/c3 3 c33
-`)
+	`
+	left := loadNodeFromString(t, s)
+	right := loadNodeFromString(t, s)
 
 	AnalyzeDuplicates(left, right)
 
@@ -29,7 +25,8 @@ func TestFindSimilarSimple(t *testing.T) {
 	assert.Contains(t, left.Similar, right)
 	assert.NotContains(t, left.Similar, right.Children["a1"], formatNodeNames(left.Similar))
 	assert.NotContains(t, left.Similar, right.Children["a1"].Children["b1"])
-	assert.Equal(t, FullDuplicate, left.SimilarityType)
+	// unique because with with similarities optimized there are no duplicates.
+	assert.Equal(t, Unique, left.SimilarityType)
 }
 
 func TestHash(t *testing.T) {
@@ -58,15 +55,18 @@ func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
 `)
 
 	right := loadNodeFromString(t, `
-/a1/b1/c1 1 c11
-/a1/b1/c2 2 c22
-/a1/b2/c3 3 c33
+/a2/b1/c1 1 c11
+/a2/b1/c2 2 c22
+/a2/b2/c3 3 c33
 `)
 
 	// printNode(t, "left", left)
 	// printNode(t, "right", left)
-	AnalyzeDuplicates(left, right)
-	assert.Equal(t, 1, len(left.Similar))
+	AnalyzeDuplicatesOpts(left, right, OptimizeSimilarities)
+	assert.Equal(t, 0, len(left.Similar))
+	leftB1 := left.Children["a1"].Children["b1"]
+	// rightB1 := right.Children["a1"].Children["b1"]
+	assert.Equal(t, 1, len(leftB1.Similar))
 	// assert.Equal(t, right.Children["a1"].Children["b1"], left.Similar[0])
 	// assert.Equal(t, similar[0], left.Children["a1"].Children["b1"])
 	// assert.Equal(t, similar[0].FullPath(), "/a1/b1")

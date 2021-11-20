@@ -13,10 +13,6 @@ import (
 
 type hash uint64
 
-func (h hash) Equal(other hash) bool {
-	return h == other
-}
-
 type Node struct {
 	Name           string
 	Size           int

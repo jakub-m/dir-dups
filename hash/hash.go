@@ -35,7 +35,8 @@ func GetSampleHash(path string, info fs.FileInfo) (HashString, error) {
 	if err != nil {
 		return nilHash, err
 	}
-	h, err := calculateHash(buf)
+	ns := getNameAndSize(info)
+	h, err := calculateHash([]byte(ns), buf)
 	if err != nil {
 		return nilHash, err
 	}
@@ -43,7 +44,7 @@ func GetSampleHash(path string, info fs.FileInfo) (HashString, error) {
 }
 
 func GetNameSizeHash(path string, info fs.FileInfo) (HashString, error) {
-	s := fmt.Sprintf("%s+%d", info.Name(), info.Size())
+	s := getNameAndSize(info)
 	h, err := calculateHash([]byte(s))
 	if err != nil {
 		return nilHash, err
@@ -80,10 +81,17 @@ func readSample(path string, info fs.FileInfo, sampleSize int64) ([]byte, error)
 	return buf[:nRead], nil
 }
 
-func calculateHash(buf []byte) (HashString, error) {
+func getNameAndSize(info fs.FileInfo) string {
+	return fmt.Sprintf("%s+%d", info.Name(), info.Size())
+}
+
+func calculateHash(bufs ...[]byte) (HashString, error) {
 	h := md5.New()
-	if _, err := h.Write(buf); err != nil {
-		return nilHash, err
+
+	for _, buf := range bufs {
+		if _, err := h.Write(buf); err != nil {
+			return nilHash, err
+		}
 	}
 	return HashString(fmt.Sprintf("%x", h.Sum(nil))), nil
 }

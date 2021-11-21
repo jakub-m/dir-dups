@@ -3,9 +3,9 @@ package analyze
 import (
 	"bufio"
 	"fmt"
+	"greasytoad/log"
 	"hash/fnv"
 	"io"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -81,6 +81,21 @@ func (n *Node) IsFile() bool {
 }
 
 func LoadNodesFromFileList(data io.Reader) (*Node, error) {
+	return LoadNodesFromFileListOpts(data, LoadOpts{})
+}
+
+type LoadOpts struct {
+	FilesToIgnore []string
+}
+
+func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
+	filesToIgnore := make(map[string]bool)
+	if opts.FilesToIgnore != nil {
+		for _, fName := range opts.FilesToIgnore {
+			filesToIgnore[fName] = true
+		}
+	}
+
 	scanner := bufio.NewScanner(data)
 
 	root := newNode("")
@@ -89,6 +104,12 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 		parsed, err := parseLine(scanner.Text())
 		if err != nil {
 			return nil, err
+		}
+
+		fileName := parsed.path[len(parsed.path)-1]
+		if _, ok := filesToIgnore[fileName]; ok {
+			log.Debugf("ignore file %s", parsed.fullPath)
+			continue
 		}
 
 		n := root
@@ -195,9 +216,10 @@ func newNode(name string) *Node {
 }
 
 type parsed struct {
-	path []string
-	size int
-	hash string
+	path     []string
+	fullPath string
+	size     int
+	hash     string
 }
 
 func parseLine(line string) (parsed, error) {
@@ -207,7 +229,8 @@ func parseLine(line string) (parsed, error) {
 	if len(parts) != 3 {
 		return parsed, fmt.Errorf("bad line: %d parts, `%v`", len(parts), line)
 	}
-	parsed.path = strings.Split(parts[0], "/")
+	parsed.fullPath = parts[0]
+	parsed.path = strings.Split(parsed.fullPath, "/")
 	size, err := strconv.ParseInt(parts[1], 10, 32)
 	if err != nil {
 		return parsed, err
@@ -220,8 +243,9 @@ func parseLine(line string) (parsed, error) {
 type AnalizeOpts int32
 
 const (
-	None                 AnalizeOpts = 0
-	OptimizeSimilarities             = (1 << iota)
+	None AnalizeOpts = 0
+	// OptimizeSimilarities removes redundant similarities. DOES NOT WORK.
+	OptimizeSimilarities = (1 << iota)
 )
 
 func AnalyzeDuplicates(left, right *Node) {

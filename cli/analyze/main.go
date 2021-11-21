@@ -67,10 +67,12 @@ type options struct {
 	printAll          bool
 	ignoreUnimportant bool
 	paths             []string
+	debug             bool
 }
 
 func getOptions() options {
 	opts := options{}
+	flag.BoolVar(&opts.debug, "debug", false, "Debug")
 	flag.BoolVar(&opts.printAll, "print-all", false, "Print all paths. The alternative is to not descend to directories that are all full duplicates or unique.")
 	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
 	flag.Parse()

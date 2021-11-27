@@ -320,3 +320,11 @@ func Walk(root *Node, onNode func(*Node) bool) {
 
 	walkRec(root, onNode)
 }
+
+func FormatNodes(nodes []*Node, formatFunc func(*Node) string) []string {
+	strings := []string{}
+	for _, n := range nodes {
+		strings = append(strings, formatFunc(n))
+	}
+	return strings
+}

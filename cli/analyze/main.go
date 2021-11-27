@@ -48,13 +48,13 @@ func main() {
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
 	if opts.tree {
-		printTree(tree, opts)
+		printSimilarityTree(tree, opts)
 	} else {
-		printFlat(tree, opts)
+		printSimilarityFlat(tree, opts)
 	}
 }
 
-func printFlat(root *analyze.Node, opts options) {
+func printSimilarityFlat(root *analyze.Node, opts options) {
 	var nodePrinter func(analyze.SimilarityType, []*analyze.Node)
 	if opts.verbose {
 		nodePrinter = func(st analyze.SimilarityType, nodes []*analyze.Node) {
@@ -79,13 +79,45 @@ func printFlat(root *analyze.Node, opts options) {
 	})
 }
 
-func printTree(root *analyze.Node, opts options) {
-	var printTreeRec func(*analyze.Node, string, string)
+type nodeMeta struct {
+	similarityType analyze.SimilarityType
+	similar        []*analyze.Node
+}
 
+func printSimilarityTree(root *analyze.Node, opts options) {
+	meta := make(map[*analyze.Node]nodeMeta)
+	analyze.FindSimilarities(root, func(st analyze.SimilarityType, nodes []*analyze.Node) {
+		for _, n := range nodes {
+			meta[n] = nodeMeta{st, nodes}
+		}
+	})
+
+	decorator := func(n *analyze.Node) string {
+		if m, ok := meta[n]; ok {
+			if m.similarityType == analyze.FullDuplicate {
+				return fmt.Sprintf("\t[%s %dx%s %s]",
+					m.similarityType,
+					len(m.similar),
+					libstrings.FormatBytes(n.Size),
+					m.similar[0].Hash)
+			} else {
+				return fmt.Sprintf("\t[%s]", m.similarityType)
+			}
+		} else {
+			return ""
+		}
+	}
+
+	printTree(root, decorator)
+}
+
+func printTree(root *analyze.Node, decorator func(*analyze.Node) string) {
+	var printTreeRec func(*analyze.Node, string, string)
 	printTreeRec = func(node *analyze.Node, immediatePrefix, spacePrefix string) {
 		children := node.ChildrenSlice()
 
-		fmt.Printf("%s%s\n", immediatePrefix, node.Name)
+		additional := decorator(node)
+		fmt.Printf("%s%s%s\n", immediatePrefix, node.Name, additional)
 
 		for i, ch := range children {
 			isLast := len(children)-1 == i
@@ -174,9 +206,6 @@ func mergeNodesIntoSingleTree(nodes ...*analyze.Node) *analyze.Node {
 }
 
 func formatNodesPaths(nodes []*analyze.Node) string {
-	names := []string{}
-	for _, n := range nodes {
-		names = append(names, n.FullPath())
-	}
-	return strings.Join(names, "\t")
+	fullPath := func(n *analyze.Node) string { return n.FullPath() }
+	return strings.Join(analyze.FormatNodes(nodes, fullPath), "\t")
 }

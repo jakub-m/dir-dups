@@ -47,40 +47,45 @@ func main() {
 	nameRoots(inputNodes...)
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
+	var nodePrinter func(analyze.SimilarityType, []*analyze.Node)
+	if opts.verbose {
+		nodePrinter = func(st analyze.SimilarityType, nodes []*analyze.Node) {
+			names := formatNodesPaths(nodes)
+			//fmt.Printf("%s\t%s\t%s\n", st, nodes[0].Hash, len(nodes), names)
+			fmt.Printf("%s\t%d\t%s\n", st, len(nodes), names)
+		}
+	} else {
+		nodePrinter = func(st analyze.SimilarityType, nodes []*analyze.Node) {
+			names := formatNodesPaths(nodes)
+			fmt.Printf("%s\t%s\n", st, names)
+		}
+	}
+
 	analyze.FindSimilarities(tree, func(similarity analyze.SimilarityType, nodes []*analyze.Node) {
 		if opts.sort {
 			sort.Slice(nodes, func(i, j int) bool {
 				return nodes[i].FullPath() < nodes[j].FullPath()
 			})
 		}
-
-		names := []string{}
-		for _, n := range nodes {
-			names = append(names, n.FullPath())
-		}
-		if opts.printHash {
-			fmt.Printf("%s\t%s\t%s\n", similarity, nodes[0].Hash, strings.Join(names, "\t"))
-		} else {
-			fmt.Printf("%s\t%s\n", similarity, strings.Join(names, "\t"))
-		}
+		nodePrinter(similarity, nodes)
 	})
 }
 
 type options struct {
 	debug             bool
+	verbose           bool
 	ignoreUnimportant bool
 	paths             []string
 	// printAll          bool
-	printHash bool
-	profile   string
-	sort      bool
+	profile string
+	sort    bool
 }
 
 func getOptions() options {
 	opts := options{}
-	flag.BoolVar(&opts.debug, "d", false, "Debug")
+	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
+	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
 	flag.BoolVar(&opts.sort, "s", false, "Sort output. Might slow down significantly.")
-	flag.BoolVar(&opts.printHash, "ph", false, "Print hashes")
 	// flag.BoolVar(&opts.printAll, "p", false, "Print all paths. The alternative is to not descend to directories that are all full duplicates or unique.")
 	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
@@ -129,4 +134,12 @@ func mergeNodesIntoSingleTree(nodes ...*analyze.Node) *analyze.Node {
 		root.Children[node.Name] = node
 	}
 	return root
+}
+
+func formatNodesPaths(nodes []*analyze.Node) string {
+	names := []string{}
+	for _, n := range nodes {
+		names = append(names, n.FullPath())
+	}
+	return strings.Join(names, "\t")
 }

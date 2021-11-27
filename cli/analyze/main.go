@@ -48,7 +48,7 @@ func main() {
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
 	if opts.tree {
-		printSimilarityTree(tree, opts)
+		printSimilarityTree(tree)
 	} else {
 		printSimilarityFlat(tree, opts)
 	}
@@ -84,7 +84,7 @@ type nodeMeta struct {
 	similar        []*analyze.Node
 }
 
-func printSimilarityTree(root *analyze.Node, opts options) {
+func printSimilarityTree(root *analyze.Node) {
 	meta := make(map[*analyze.Node]nodeMeta)
 	analyze.FindSimilarities(root, func(st analyze.SimilarityType, nodes []*analyze.Node) {
 		for _, n := range nodes {
@@ -108,13 +108,16 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 		}
 	}
 
-	printTree(root, decorator)
+	printTree(getFirstNamesNode(root), decorator)
 }
 
 func printTree(root *analyze.Node, decorator func(*analyze.Node) string) {
 	var printTreeRec func(*analyze.Node, string, string)
 	printTreeRec = func(node *analyze.Node, immediatePrefix, spacePrefix string) {
 		children := node.ChildrenSlice()
+		sort.Slice(children, func(i, j int) bool {
+			return children[i].Name < children[j].Name
+		})
 
 		additional := decorator(node)
 		fmt.Printf("%s%s%s\n", immediatePrefix, node.Name, additional)
@@ -208,4 +211,13 @@ func mergeNodesIntoSingleTree(nodes ...*analyze.Node) *analyze.Node {
 func formatNodesPaths(nodes []*analyze.Node) string {
 	fullPath := func(n *analyze.Node) string { return n.FullPath() }
 	return strings.Join(analyze.FormatNodes(nodes, fullPath), "\t")
+}
+
+func getFirstNamesNode(node *analyze.Node) *analyze.Node {
+	if node.Name == "" && len(node.Children) == 1 {
+		for _, ch := range node.Children {
+			return getFirstNamesNode(ch)
+		}
+	}
+	return node
 }

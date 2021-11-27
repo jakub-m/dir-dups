@@ -80,6 +80,31 @@ func printFlat(root *analyze.Node, opts options) {
 }
 
 func printTree(root *analyze.Node, opts options) {
+	var printTreeRec func(*analyze.Node, string, string)
+
+	printTreeRec = func(node *analyze.Node, immediatePrefix, spacePrefix string) {
+		children := node.ChildrenSlice()
+
+		fmt.Printf("%s%s\n", immediatePrefix, node.Name)
+
+		for i, ch := range children {
+			isLast := len(children)-1 == i
+			newImmediatePrefix, newSpacePrefix := "", ""
+			if isLast {
+				newImmediatePrefix = spacePrefix + "└──"
+			} else {
+				newImmediatePrefix = spacePrefix + "├──"
+			}
+			if isLast {
+				newSpacePrefix = spacePrefix + "   "
+			} else {
+				newSpacePrefix = spacePrefix + "│  "
+			}
+			printTreeRec(ch, newImmediatePrefix, newSpacePrefix)
+		}
+	}
+
+	printTreeRec(root, "", "")
 }
 
 type options struct {

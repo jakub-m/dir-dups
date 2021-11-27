@@ -93,18 +93,6 @@ func indexNodesByHashOptimized(root *Node) map[hash][]*Node {
 	return m
 }
 
-func (n *Node) FindChild(cond func(*Node) bool) *Node {
-	if n.Children == nil {
-		return nil
-	}
-	for _, ch := range n.Children {
-		if cond(ch) {
-			return ch
-		}
-	}
-	return nil
-}
-
 func updateNodeSet(m map[*Node]bool, nodes ...*Node) {
 	panicAssertf(nodes != nil, "nodes are null")
 	for _, n := range nodes {

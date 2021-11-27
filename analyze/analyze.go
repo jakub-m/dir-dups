@@ -90,6 +90,26 @@ func (n *Node) IsFile() bool {
 	return len(n.Children) == 0
 }
 
+func (n *Node) FindChild(cond func(*Node) bool) *Node {
+	if n.Children == nil {
+		return nil
+	}
+	for _, ch := range n.Children {
+		if cond(ch) {
+			return ch
+		}
+	}
+	return nil
+}
+
+func (n *Node) ChildrenSlice() []*Node {
+	children := []*Node{}
+	for _, ch := range n.Children {
+		children = append(children, ch)
+	}
+	return children
+}
+
 func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 	return LoadNodesFromFileListOpts(data, LoadOpts{})
 }

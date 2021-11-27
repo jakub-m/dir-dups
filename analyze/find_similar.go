@@ -1,12 +1,41 @@
 package analyze
 
 import (
+	"fmt"
 	"greasytoad/log"
 	"strings"
 )
 
+type similarityMap map[*Node]similarityMapValue
+
+type similarityMapValue struct {
+	similarityType SimilarityType
+	sameHash       []*Node
+}
+
+func (m similarityMap) setWithNodes(node *Node, st SimilarityType, sameHash []*Node) {
+	m[node] = similarityMapValue{st, sameHash}
+}
+
+func (m similarityMap) set(node *Node, st SimilarityType) {
+	m[node] = similarityMapValue{st, nil}
+}
+
+func (m similarityMap) getType(node *Node) SimilarityType {
+	return m.get(node).similarityType
+}
+
+func (m similarityMap) get(node *Node) similarityMapValue {
+	if v, ok := m[node]; ok {
+		return v
+	} else {
+		return similarityMapValue{Unknown, nil}
+	}
+}
+
 func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
-	indexByHash := indexNodesByHashOptimized(root)
+	similarityMap := getSimilarityMap(root)
+
 	// alreadyReported holds nodes that appeared on in the output. This is to skip analysing nodes that already appeared as duplicate
 	// of another node. This results in less noise on the output.
 	alreadyReported := make(map[*Node]bool)
@@ -14,36 +43,33 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 	//alreadyReportedAsDuplicate prevents descending into reported duplicates
 	alreadyReportedAsDuplicate := make(map[*Node]bool)
 
-	Walk(root, func(n *Node) bool {
-		if _, ok := alreadyReportedAsDuplicate[n]; ok {
-			log.Debugf("FindSimilarities: skip '%s', already reported as duplicate. Do not descend.", n.FullPath())
-			return false
-		}
+	Walk(root, func(currentNode *Node) bool {
+		log.Debugf("FindSimilarities: now walk %s", currentNode.FullPath())
+		// if _, ok := alreadyReportedAsDuplicate[n]; ok {
+		// 	log.Debugf("FindSimilarities: skip '%s', already reported as duplicate. Do not descend.", n.FullPath())
+		// 	return false
+		// }
 
-		if _, ok := alreadyReported[n]; ok {
-			log.Debugf("FindSimilarities: skip '%s', already reported", n.FullPath())
+		if _, ok := alreadyReported[currentNode]; ok {
+			log.Debugf("FindSimilarities: skip callback for '%s', already reported", currentNode.FullPath())
 			return true
 		}
 
-		similar, ok := indexByHash[n.Hash]
-		if !ok {
-			// This can happen for optimized index with removed parents with similar hashes as children.
-			log.Debugf("FindSimilarities: skip '%s', not indexes (has duplicate child)", n.FullPath())
-			return true
-		}
-
-		//similar = filterDuplicate(n, similar)
-		if len(similar) == 1 {
-			updateNodeSet(alreadyReported, similar)
-			onNodes(Unique, similar)
-			return true
-		} else {
-			updateNodeSet(alreadyReported, similar)
-			updateNodeSet(alreadyReportedAsDuplicate, similar)
-			onNodes(FullDuplicate, similar)
+		similarity := similarityMap.get(currentNode)
+		log.Debugf("FindSimilarities: similarity %s", similarity.similarityType)
+		if similarity.similarityType == FullDuplicate {
+			log.Debugf("FindSimilarities: FullDuplicate, do not descend %s", currentNode.FullPath())
+			nodesWithSameHash := similarity.sameHash
+			updateNodeSet(alreadyReported, nodesWithSameHash...)
+			updateNodeSet(alreadyReportedAsDuplicate, nodesWithSameHash...)
+			onNodes(FullDuplicate, nodesWithSameHash)
 			// do not descend on full duplicate, analysing children will not add any new information.
-			return false
+			return true
 		}
+
+		updateNodeSet(alreadyReported, currentNode)
+		onNodes(Unique, []*Node{currentNode})
+		return true
 	})
 }
 
@@ -81,7 +107,8 @@ func (n *Node) FindChild(cond func(*Node) bool) *Node {
 	return nil
 }
 
-func updateNodeSet(m map[*Node]bool, nodes []*Node) {
+func updateNodeSet(m map[*Node]bool, nodes ...*Node) {
+	panicAssertf(nodes != nil, "nodes are null")
 	for _, n := range nodes {
 		m[n] = true
 	}
@@ -100,4 +127,75 @@ func walkAll(root *Node, onNode func(*Node)) {
 		onNode(n)
 		return true
 	})
+}
+
+func getSimilarityMap(root *Node) similarityMap {
+	similarityMap := make(similarityMap)
+
+	nodesByHash := indexNodesByHash(root)
+
+	var updateSimilarityRec func(*Node)
+	updateSimilarityRec = func(node *Node) {
+		for _, ch := range node.Children {
+			// guarantee that the children have the status already set.
+			updateSimilarityRec(ch)
+		}
+		similarNodes := nodesByHash[node.Hash]
+		if len(nodesByHash[node.Hash]) > 1 {
+			// there are nodes with similar hashes, so it is a duplicate.
+			similarityMap.setWithNodes(node, FullDuplicate, similarNodes)
+			return
+		}
+		// the code below assumes that there are no other nodes with similar hashes
+
+		fullOrWeakDuplicate := func(n *Node) bool {
+			return similarityMap.getType(n) == FullDuplicate || similarityMap.getType(n) == WeakDuplicate
+		}
+		unique := func(n *Node) bool {
+			return similarityMap.getType(n) == Unique
+		}
+		uniqueOrPartiallyUnique := func(n *Node) bool {
+			return similarityMap.getType(n) == Unique || similarityMap.getType(n) == PartiallyUnique
+		}
+		unknown := func(n *Node) bool {
+			return similarityMap.getType(n) == Unknown
+		}
+
+		if node.IsFile() {
+			// a file without similar nodes is a unique.
+			similarityMap.set(node, Unique)
+			return
+		}
+		// all child nodes are full duplicates, but not necessarily in a similar file tree.
+		// this node is marked as weak duplicate.
+		if allChildren(node, fullOrWeakDuplicate) {
+			similarityMap.set(node, WeakDuplicate)
+			return
+		}
+		if allChildren(node, unique) {
+			similarityMap.set(node, Unique)
+			return
+		}
+		if allChildren(node, uniqueOrPartiallyUnique) {
+			similarityMap.set(node, PartiallyUnique)
+			return
+		}
+		if someChildren(node, fullOrWeakDuplicate) &&
+			someChildren(node, uniqueOrPartiallyUnique) &&
+			noChildren(node, unknown) {
+			similarityMap.set(node, PartiallyUnique)
+			return
+		}
+		log.Debugf("ERROR: unknown similarity type for: %s", node.FullPath())
+	}
+
+	updateSimilarityRec(root)
+	return similarityMap
+}
+
+func panicAssertf(cond bool, format string, args ...interface{}) {
+	if !cond {
+		m := fmt.Sprintf(format, args...)
+		panic(m)
+	}
 }

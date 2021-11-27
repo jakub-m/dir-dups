@@ -18,7 +18,7 @@ const (
 func main() {
 	opts := getOptions()
 	if opts.debug {
-		log.SetDebug(true)
+		log.DebugEnabled = true
 	}
 	pathLeft := opts.paths[0]
 	log.Printf("loading: %s", pathLeft)

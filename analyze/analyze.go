@@ -23,10 +23,11 @@ type Node struct {
 	FileCount      int
 	Hash           hash
 	Children       map[string]*Node // map children node name to node
-	SimilarityType SimilarityType
+	SimilarityType SimilarityType   // TODO remove
 	// Similar nodes have the same hash.
-	Similar []*Node `json:"-"`
-	Parent  *Node   `json:"-"`
+	Similar []*Node `json:"-"` // TODO remove
+	// TODO add FullPath as optimization (for debugging)
+	Parent *Node `json:"-"`
 }
 
 type SimilarityType int

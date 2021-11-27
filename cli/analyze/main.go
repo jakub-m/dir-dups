@@ -47,7 +47,11 @@ func main() {
 	nameRoots(inputNodes...)
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
-	printFlat(tree, opts)
+	if opts.tree {
+		printTree(tree, opts)
+	} else {
+		printFlat(tree, opts)
+	}
 }
 
 func printFlat(root *analyze.Node, opts options) {
@@ -75,21 +79,25 @@ func printFlat(root *analyze.Node, opts options) {
 	})
 }
 
+func printTree(root *analyze.Node, opts options) {
+}
+
 type options struct {
 	debug             bool
 	verbose           bool
 	ignoreUnimportant bool
 	paths             []string
-	// printAll          bool
-	profile string
-	sort    bool
+	profile           string
+	sort              bool
+	tree              bool
 }
 
 func getOptions() options {
 	opts := options{}
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
 	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
-	flag.BoolVar(&opts.sort, "s", false, "Sort output. Might slow down significantly.")
+	flag.BoolVar(&opts.sort, "s", false, "Sort output")
+	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
 	// flag.BoolVar(&opts.printAll, "p", false, "Print all paths. The alternative is to not descend to directories that are all full duplicates or unique.")
 	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")

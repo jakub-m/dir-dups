@@ -3,7 +3,6 @@ package analyze
 import (
 	"fmt"
 	"greasytoad/log"
-	"strings"
 )
 
 type similarityMap map[*Node]similarityMapValue
@@ -74,7 +73,7 @@ func indexNodesByHashOptimized(root *Node) map[hash][]*Node {
 	// if there is a directory structure a/b/f then a, b and f will have the same hash. Here we report only one of those three,
 	// otherwise they would show up as duplicates of each other.
 	m := make(map[hash][]*Node)
-	walkAll(root, func(n *Node) {
+	WalkAll(root, func(n *Node) {
 		hasSameHash := func(d *Node) bool {
 			return n.Hash == d.Hash
 		}
@@ -111,21 +110,6 @@ func updateNodeSet(m map[*Node]bool, nodes ...*Node) {
 	for _, n := range nodes {
 		m[n] = true
 	}
-}
-
-func formatNodes(nodes []*Node) string {
-	ss := []string{}
-	for _, n := range nodes {
-		ss = append(ss, n.FullPath())
-	}
-	return strings.Join(ss, ", ")
-}
-
-func walkAll(root *Node, onNode func(*Node)) {
-	Walk(root, func(n *Node) bool {
-		onNode(n)
-		return true
-	})
 }
 
 func getSimilarityMap(root *Node) similarityMap {

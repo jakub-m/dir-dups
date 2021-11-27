@@ -279,6 +279,13 @@ func noChildren(node *Node, cond func(*Node) bool) bool {
 	return !someChildren(node, cond)
 }
 
+func WalkAll(root *Node, onNode func(*Node)) {
+	Walk(root, func(n *Node) bool {
+		onNode(n)
+		return true
+	})
+}
+
 // Walk traverses the node tree. onNode return a boolean flagging if the function chould descend or not.
 func Walk(root *Node, onNode func(*Node) bool) {
 	var walkRec func(root *Node, onNode func(*Node) bool)

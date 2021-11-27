@@ -17,6 +17,9 @@ const (
 
 func main() {
 	opts := getOptions()
+	if opts.debug {
+		log.SetDebug(true)
+	}
 	pathLeft := opts.paths[0]
 	log.Printf("loading: %s", pathLeft)
 	nodeLeft, err := loadNode(pathLeft, opts.ignoreUnimportant)

@@ -3,7 +3,6 @@ package analyze
 import (
 	"fmt"
 	"greasytoad/log"
-	"sort"
 	"strings"
 )
 
@@ -44,7 +43,7 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 
 		if _, wasAlreadyReported := alreadyReported[currentNode]; !wasAlreadyReported {
 			// do not call callback if was already reported
-			log.Debugf("FindSimilarities: callback '%s', similarity %s", currentNode.FullPath(), similarity.similarityType)
+			// log.Debugf("FindSimilarities: callback '%s', similarity %s", currentNode.FullPath(), similarity.similarityType)
 			onNodes(similarity.similarityType, similarity.sameHash)
 		}
 
@@ -141,9 +140,6 @@ func getSimilarityMap(root *Node) similarityMap {
 			updateSimilarityRec(ch)
 		}
 		similarNodes := nodesByHash[node.Hash]
-		sort.Slice(similarNodes, func(i, j int) bool {
-			return similarNodes[i].FullPath() < similarNodes[j].FullPath()
-		})
 		if len(nodesByHash[node.Hash]) > 1 {
 			// there are nodes with similar hashes, so it is a duplicate.
 			similarityMap.set(node, FullDuplicate, similarNodes)

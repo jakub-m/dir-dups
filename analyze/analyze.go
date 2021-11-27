@@ -13,6 +13,10 @@ import (
 
 type hash uint64
 
+func (h hash) String() string {
+	return fmt.Sprintf("%x", uint64(h))
+}
+
 type Node struct {
 	Name           string
 	Size           int
@@ -98,7 +102,7 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 
 	scanner := bufio.NewScanner(data)
 
-	root := newNode("")
+	root := NewNode("")
 
 	for scanner.Scan() {
 		parsed, err := parseLine(scanner.Text())
@@ -116,7 +120,7 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 		for i, p := range parsed.path {
 			if i == len(parsed.path)-1 {
 				// last, that is the file
-				newChild := newNode(p)
+				newChild := NewNode(p)
 				newChild.Size = parsed.size
 				newChild.FileCount = 1
 				newChild.Parent = n
@@ -129,7 +133,7 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 				if ch, ok := n.Children[p]; ok {
 					n = ch
 				} else {
-					newChild := newNode(p)
+					newChild := NewNode(p)
 					newChild.Parent = n
 					n.Children[p] = newChild
 					n = newChild
@@ -207,7 +211,7 @@ func calculateHash(node *Node) hash {
 	return hash(h.Sum64())
 }
 
-func newNode(name string) *Node {
+func NewNode(name string) *Node {
 	return &Node{
 		Name:     name,
 		Children: make(map[string]*Node),

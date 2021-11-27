@@ -47,6 +47,10 @@ func main() {
 	nameRoots(inputNodes...)
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
+	printFlat(tree, opts)
+}
+
+func printFlat(root *analyze.Node, opts options) {
 	var nodePrinter func(analyze.SimilarityType, []*analyze.Node)
 	if opts.verbose {
 		nodePrinter = func(st analyze.SimilarityType, nodes []*analyze.Node) {
@@ -61,7 +65,7 @@ func main() {
 		}
 	}
 
-	analyze.FindSimilarities(tree, func(similarity analyze.SimilarityType, nodes []*analyze.Node) {
+	analyze.FindSimilarities(root, func(similarity analyze.SimilarityType, nodes []*analyze.Node) {
 		if opts.sort {
 			sort.Slice(nodes, func(i, j int) bool {
 				return nodes[i].FullPath() < nodes[j].FullPath()

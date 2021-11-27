@@ -55,11 +55,16 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 			if someChildren(currentNode, condSameHash(currentNode.Hash)) {
 				return true
 			} else {
-				// if current node is a full duplicate of other node, and there is no child node with similar hash, then do not
-				// descend. it won't bring any useful information.
+				// If current node is a full duplicate of other node, and there is no child node with similar hash, then do not
+				// descend. It won't bring any useful information.
 				log.Debugf("FindSimilarities: FullDuplicate, do not descend %s", currentNode.FullPath())
 				return false
 			}
+		}
+
+		if similarity.similarityType == Unique {
+			// No point in showing nodes that are children of unique node, they are unique as well.
+			return false
 		}
 
 		return true

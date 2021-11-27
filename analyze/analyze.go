@@ -23,11 +23,7 @@ type Node struct {
 	FileCount      int
 	Hash           hash
 	Children       map[string]*Node // map children node name to node
-	SimilarityType SimilarityType   // TODO remove
-	// Similar nodes have the same hash.
-	Similar []*Node `json:"-"` // TODO remove
-	// TODO add FullPath as optimization (for debugging)
-	Parent         *Node `json:"-"`
+	Parent         *Node            `json:"-"`
 	cachedFullPath *string
 }
 
@@ -225,7 +221,6 @@ func NewNode(name string) *Node {
 	return &Node{
 		Name:     name,
 		Children: make(map[string]*Node),
-		Similar:  []*Node{},
 	}
 }
 
@@ -262,38 +257,6 @@ const (
 	OptimizeSimilarities = (1 << iota)
 )
 
-func AnalyzeDuplicates(left, right *Node) {
-	AnalyzeDuplicatesOpts(left, right, None)
-}
-
-func AnalyzeDuplicatesOpts(left, right *Node, opts AnalizeOpts) {
-	indexLeft := indexNodesByHash(left)
-	indexRight := indexNodesByHash(right)
-
-	log.Printf("hashes: left %d, right %d", len(indexLeft), len(indexRight))
-	leftOnly, overlap, rightOnly := findHashOverlap(indexLeft, indexRight)
-	log.Printf("hashes: left only %d, overlap %d, right only %d", len(leftOnly), len(overlap), len(rightOnly))
-
-	// cross-reference similar nodes.
-	for h := range overlap {
-		for _, leftNode := range indexLeft[h] {
-			leftNode.Similar = indexRight[h]
-		}
-		for _, rightNode := range indexRight[h] {
-			rightNode.Similar = indexLeft[h]
-		}
-	}
-
-	if (opts & OptimizeSimilarities) != 0 {
-		// This might take some significant time
-		removeRedunantSimilarNodes(left)
-		removeRedunantSimilarNodes(right)
-	}
-
-	updateSimilarity(left)
-	updateSimilarity(right)
-}
-
 func allChildren(node *Node, cond func(*Node) bool) bool {
 	for _, ch := range node.Children {
 		if !cond(ch) {
@@ -314,145 +277,6 @@ func someChildren(node *Node, cond func(*Node) bool) bool {
 
 func noChildren(node *Node, cond func(*Node) bool) bool {
 	return !someChildren(node, cond)
-}
-
-func indexNodesByHash(root *Node) map[hash][]*Node {
-	m := make(map[hash][]*Node)
-	Walk(root, func(n *Node) bool {
-		nodes, ok := m[n.Hash]
-		if !ok {
-			m[n.Hash] = []*Node{n}
-			return true
-		}
-		m[n.Hash] = append(nodes, n)
-		// The list will now contain parents and children with the same hash, which is not great.
-		// This could be optimized out later.
-		return true
-	})
-	return m
-}
-
-func findHashOverlap(left, right map[hash][]*Node) (leftOnly, overlap, rightOnly map[hash]bool) {
-	leftOnly = make(map[hash]bool)
-	overlap = make(map[hash]bool)
-	rightOnly = make(map[hash]bool)
-
-	for h := range left {
-		if _, ok := right[h]; ok {
-			overlap[h] = true
-		} else {
-			leftOnly[h] = true
-		}
-	}
-	for h := range right {
-		if _, ok := left[h]; ok {
-			overlap[h] = true
-		} else {
-			rightOnly[h] = true
-		}
-	}
-
-	return
-}
-
-func removeRedunantSimilarNodes(node *Node) {
-	Walk(node, func(n *Node) bool {
-		n.Similar = filterSimilar(n.Similar)
-		n.Similar = filterDuplicate(node, n.Similar)
-		return true
-	})
-}
-
-func filterSimilar(nodes []*Node) []*Node {
-	selectedNodes := []*Node{}
-ITER_INPUT_NODES:
-	for _, node := range nodes {
-		// if node has parent that is in the input nodes then ignore it, because its parent
-		// will be reported anyway
-		if node.Parent != nil {
-			for _, potentialParent := range nodes {
-				if node.FullPath() == potentialParent.FullPath() {
-					continue ITER_INPUT_NODES
-				}
-			}
-		}
-		selectedNodes = append(selectedNodes, node)
-	}
-	return selectedNodes
-}
-
-func filterDuplicate(needle *Node, haystack []*Node) []*Node {
-	selectedNodes := []*Node{}
-	for _, n := range haystack {
-		if n.FullPath() != needle.FullPath() {
-			selectedNodes = append(selectedNodes, n)
-		}
-	}
-	return selectedNodes
-}
-
-func updateSimilarity(node *Node) {
-	var updateSimilarityRec func(*Node)
-
-	updateSimilarityRec = func(node *Node) {
-		for _, ch := range node.Children {
-			// guarantee that the children have the status already set.
-			updateSimilarityRec(ch)
-		}
-		if len(node.Similar) > 0 {
-			// there are nodes with similar hashes, so it is a duplicate.
-			node.SimilarityType = FullDuplicate
-			return
-		}
-		if node.IsFile() {
-			// a file without similar nodes is a unique.
-			node.SimilarityType = Unique
-			return
-		}
-
-		fullOrWeakDuplicate := func(n *Node) bool {
-			return n.SimilarityType == FullDuplicate || n.SimilarityType == WeakDuplicate
-		}
-		unique := func(n *Node) bool {
-			return n.SimilarityType == Unique
-		}
-		uniqueOrPartiallyUnique := func(n *Node) bool {
-			return n.SimilarityType == Unique || n.SimilarityType == PartiallyUnique
-		}
-		unknown := func(n *Node) bool {
-			return n.SimilarityType == Unknown
-		}
-
-		// all child nodes are full duplicates, but not necessarily in a similar file tree.
-		// this node is marked as weak duplicate.
-		if allChildren(node, fullOrWeakDuplicate) {
-			node.SimilarityType = WeakDuplicate
-			return
-		}
-		if allChildren(node, unique) {
-			node.SimilarityType = Unique
-			return
-		}
-		if allChildren(node, uniqueOrPartiallyUnique) {
-			node.SimilarityType = PartiallyUnique
-			return
-		}
-		if someChildren(node, fullOrWeakDuplicate) &&
-			someChildren(node, uniqueOrPartiallyUnique) &&
-			noChildren(node, unknown) {
-			node.SimilarityType = PartiallyUnique
-			return
-		}
-
-		log.Printf("xxx %s (len %d)", node.FullPath(), len(node.Children))
-		for _, ch := range node.Children {
-			log.Printf("xxx %s %s", ch.SimilarityType, ch.FullPath())
-		}
-
-		node.SimilarityType = Unknown
-	}
-
-	updateSimilarityRec(node)
 }
 
 // Walk traverses the node tree. onNode return a boolean flagging if the function chould descend or not.

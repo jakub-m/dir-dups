@@ -27,7 +27,8 @@ type Node struct {
 	// Similar nodes have the same hash.
 	Similar []*Node `json:"-"` // TODO remove
 	// TODO add FullPath as optimization (for debugging)
-	Parent *Node `json:"-"`
+	Parent         *Node `json:"-"`
+	cachedFullPath *string
 }
 
 type SimilarityType int
@@ -64,6 +65,14 @@ func (s SimilarityType) String() string {
 }
 
 func (n *Node) FullPath() string {
+	if n.cachedFullPath == nil {
+		p := n.getFullPath()
+		n.cachedFullPath = &p
+	}
+	return *n.cachedFullPath
+}
+
+func (n *Node) getFullPath() string {
 	parts := []string{}
 
 	d := n

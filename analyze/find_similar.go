@@ -3,6 +3,7 @@ package analyze
 import (
 	"fmt"
 	"greasytoad/log"
+	"sort"
 	"strings"
 )
 
@@ -13,13 +14,9 @@ type similarityMapValue struct {
 	sameHash       []*Node
 }
 
-func (m similarityMap) setWithNodes(node *Node, st SimilarityType, sameHash []*Node) {
+func (m similarityMap) set(node *Node, st SimilarityType, sameHash []*Node) {
 	m[node] = similarityMapValue{st, sameHash}
 }
-
-// func (m similarityMap) set(node *Node, st SimilarityType) {
-// 	m[node] = similarityMapValue{st, nil}
-// }
 
 func (m similarityMap) getType(node *Node) SimilarityType {
 	return m.get(node).similarityType
@@ -43,11 +40,6 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 	Walk(root, func(currentNode *Node) bool {
 		log.Debugf("FindSimilarities: now walk %s", currentNode.FullPath())
 
-		// if _, ok := alreadyReported[currentNode]; ok {
-		// 	log.Debugf("FindSimilarities: skip callback for '%s', already reported", currentNode.FullPath())
-		// 	return true
-		// }
-
 		similarity := similarityMap.get(currentNode)
 
 		if _, wasAlreadyReported := alreadyReported[currentNode]; !wasAlreadyReported {
@@ -66,7 +58,7 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 				// if current node is a full duplicate of other node, and there is no child node with similar hash, then do not
 				// descend. it won't bring any useful information.
 				log.Debugf("FindSimilarities: FullDuplicate, do not descend %s", currentNode.FullPath())
-				return true // here
+				return false
 			}
 		}
 
@@ -75,13 +67,10 @@ func FindSimilarities(root *Node, onNodes func(SimilarityType, []*Node)) {
 }
 
 func indexNodesByHashOptimized(root *Node) map[hash][]*Node {
+	// if there is a directory structure a/b/f then a, b and f will have the same hash. Here we report only one of those three,
+	// otherwise they would show up as duplicates of each other.
 	m := make(map[hash][]*Node)
 	walkAll(root, func(n *Node) {
-		nodes, ok := m[n.Hash]
-		if !ok {
-			nodes = []*Node{}
-			m[n.Hash] = nodes
-		}
 		hasSameHash := func(d *Node) bool {
 			return n.Hash == d.Hash
 		}
@@ -89,9 +78,14 @@ func indexNodesByHashOptimized(root *Node) map[hash][]*Node {
 			// Do not index node if the there is a node with the same hash. This results in omitting parent nodes that have
 			// duplicated children, which results in less noise on output.
 			log.Debugf("indexNodesByHashOptimized: ignore '%s' because of a duplicated child '%s'", n.FullPath(), ch.Name)
-		} else {
-			m[n.Hash] = append(nodes, n)
+			return
 		}
+		nodes, ok := m[n.Hash]
+		if !ok {
+			nodes = []*Node{}
+			m[n.Hash] = nodes
+		}
+		m[n.Hash] = append(nodes, n)
 	})
 	return m
 }
@@ -133,7 +127,7 @@ func walkAll(root *Node, onNode func(*Node)) {
 func getSimilarityMap(root *Node) similarityMap {
 	similarityMap := make(similarityMap)
 
-	nodesByHash := indexNodesByHash(root)
+	nodesByHash := indexNodesByHashOptimized(root)
 
 	var updateSimilarityRec func(*Node)
 	updateSimilarityRec = func(node *Node) {
@@ -142,9 +136,12 @@ func getSimilarityMap(root *Node) similarityMap {
 			updateSimilarityRec(ch)
 		}
 		similarNodes := nodesByHash[node.Hash]
+		sort.Slice(similarNodes, func(i, j int) bool {
+			return similarNodes[i].FullPath() < similarNodes[j].FullPath()
+		})
 		if len(nodesByHash[node.Hash]) > 1 {
 			// there are nodes with similar hashes, so it is a duplicate.
-			similarityMap.setWithNodes(node, FullDuplicate, similarNodes)
+			similarityMap.set(node, FullDuplicate, similarNodes)
 			return
 		}
 		// the code below assumes that there are no other nodes with similar hashes
@@ -164,27 +161,27 @@ func getSimilarityMap(root *Node) similarityMap {
 
 		if node.IsFile() {
 			// a file without similar nodes is a unique.
-			similarityMap.setWithNodes(node, Unique, similarNodes)
+			similarityMap.set(node, Unique, similarNodes)
 			return
 		}
 		// all child nodes are full duplicates, but not necessarily in a similar file tree.
 		// this node is marked as weak duplicate.
 		if allChildren(node, fullOrWeakDuplicate) {
-			similarityMap.setWithNodes(node, WeakDuplicate, similarNodes)
+			similarityMap.set(node, WeakDuplicate, similarNodes)
 			return
 		}
 		if allChildren(node, unique) {
-			similarityMap.setWithNodes(node, Unique, similarNodes)
+			similarityMap.set(node, Unique, similarNodes)
 			return
 		}
 		if allChildren(node, uniqueOrPartiallyUnique) {
-			similarityMap.setWithNodes(node, PartiallyUnique, similarNodes)
+			similarityMap.set(node, PartiallyUnique, similarNodes)
 			return
 		}
 		if someChildren(node, fullOrWeakDuplicate) &&
 			someChildren(node, uniqueOrPartiallyUnique) &&
 			noChildren(node, unknown) {
-			similarityMap.setWithNodes(node, PartiallyUnique, similarNodes)
+			similarityMap.set(node, PartiallyUnique, similarNodes)
 			return
 		}
 		log.Debugf("ERROR: unknown similarity type for: %s", node.FullPath())

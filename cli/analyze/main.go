@@ -96,11 +96,13 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 	decorator := func(n *analyze.Node) string {
 		if m, ok := meta[n]; ok {
 			if m.similarityType == analyze.FullDuplicate {
-				return fmt.Sprintf("\t[%s %dx%s %s]",
+				return fmt.Sprintf("\t[%s %dx%s %s %s]",
 					m.similarityType,
 					len(m.similar),
 					libstrings.FormatBytes(n.Size),
-					m.similar[0].Hash)
+					m.similar[0].Hash,
+					n.FullPath(),
+				)
 			} else {
 				return fmt.Sprintf("\t[%s]", m.similarityType)
 			}
@@ -110,17 +112,12 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 	}
 
 	var nodeFilter func([]*analyze.Node) []*analyze.Node
-	if opts.selectDuplicatedDirs {
-		shouldPrint := getNodeSetForPrintTree(root, meta)
-		nodeFilter = func(nodes []*analyze.Node) []*analyze.Node {
-			selected := []*analyze.Node{}
-			for _, node := range nodes {
-				if ok := shouldPrint[node]; ok {
-					selected = append(selected, node)
-				}
-			}
-			return selected
-		}
+	if opts.selectDirs {
+		shouldPrint := getNodeSetForPrintTreeDirs(root)
+		nodeFilter = nodeSelectorWithSet(shouldPrint)
+	} else if opts.selectDuplicatedDirs {
+		shouldPrint := getNodeSetForPrintTreeDuplicateDirs(root, meta)
+		nodeFilter = nodeSelectorWithSet(shouldPrint)
 	} else {
 		nodeFilter = nodeSelectorAll
 	}
@@ -130,6 +127,18 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 
 func nodeSelectorAll(nodes []*analyze.Node) []*analyze.Node {
 	return nodes
+}
+
+func nodeSelectorWithSet(shouldSelectSet map[*analyze.Node]bool) func([]*analyze.Node) []*analyze.Node {
+	return func(nodes []*analyze.Node) []*analyze.Node {
+		selected := []*analyze.Node{}
+		for _, node := range nodes {
+			if ok := shouldSelectSet[node]; ok {
+				selected = append(selected, node)
+			}
+		}
+		return selected
+	}
 }
 
 func printTree(root *analyze.Node,
@@ -167,10 +176,8 @@ func printTree(root *analyze.Node,
 	printTreeRec(root, "", "")
 }
 
-// getNodeSetForPrintTree returns a node set that can be later used to determine which nodes should be printed in the tree. If a
-func getNodeSetForPrintTree(root *analyze.Node, meta map[*analyze.Node]nodeMeta) map[*analyze.Node]bool {
+func getNodeSetForPrintTreeDirs(root *analyze.Node) map[*analyze.Node]bool {
 	set := make(map[*analyze.Node]bool)
-
 	var rec func(*analyze.Node)
 	rec = func(current *analyze.Node) {
 		for _, child := range current.Children {
@@ -180,14 +187,32 @@ func getNodeSetForPrintTree(root *analyze.Node, meta map[*analyze.Node]nodeMeta)
 				set[current] = true
 			}
 		}
+		if !current.IsFile() {
+			set[current] = true
+		}
+	}
+	rec(root)
+	return set
+}
 
+// getNodeSetForPrintTreeDuplicateDirs returns a node set that can be later used to determine which nodes should
+// be printed in the tree.
+func getNodeSetForPrintTreeDuplicateDirs(root *analyze.Node, meta map[*analyze.Node]nodeMeta) map[*analyze.Node]bool {
+	set := make(map[*analyze.Node]bool)
+	var rec func(*analyze.Node)
+	rec = func(current *analyze.Node) {
+		for _, child := range current.Children {
+			rec(child)
+			if set[child] {
+				// if a node is selected for printing, then recursively select all the nodes that lead to that node.
+				set[current] = true
+			}
+		}
 		if m, ok := meta[current]; ok && m.similarityType == analyze.FullDuplicate && !current.IsFile() {
 			set[current] = true
 		}
-
 	}
 	rec(root)
-
 	return set
 }
 
@@ -247,6 +272,7 @@ type options struct {
 	profile              string
 	sort                 bool
 	tree                 bool
+	selectDirs           bool
 	selectDuplicatedDirs bool
 }
 
@@ -258,7 +284,8 @@ func getOptions() options {
 	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
 	flag.BoolVar(&opts.sort, "s", false, "Sort output")
 	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
-	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
+	flag.BoolVar(&opts.selectDirs, "dirs", false, "Select only directories")
+	flag.BoolVar(&opts.selectDuplicatedDirs, "dupdirs", false, "Select only duplicated directories")
 	flag.Var(commaSplitter{&opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Comma separated of files or directores to ignore (default %+v)", opts.ignoreFilesOrDirs))
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
 	flag.Parse()

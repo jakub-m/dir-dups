@@ -12,4 +12,12 @@ The motivation was a bloated backup with 0.5TB of familiy photos.
 
 ### `analyze`
 
-tbd
+Basic usage:
+
+```
+analyze -t -dd output_of_listfiles`
+```
+
+Print tree of directories that are duplicates
+
+

@@ -115,15 +115,24 @@ func LoadNodesFromFileList(data io.Reader) (*Node, error) {
 }
 
 type LoadOpts struct {
-	FilesToIgnore []string
+	FilesOrDirsToIgnore []string
 }
 
 func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
-	filesToIgnore := make(map[string]bool)
-	if opts.FilesToIgnore != nil {
-		for _, fName := range opts.FilesToIgnore {
-			filesToIgnore[fName] = true
+	filesOrDirsToIgnore := make(map[string]bool)
+	if opts.FilesOrDirsToIgnore != nil {
+		for _, name := range opts.FilesOrDirsToIgnore {
+			filesOrDirsToIgnore[name] = true
 		}
+	}
+
+	shouldIgnorePath := func(chunkedPath []string) (string, bool) {
+		for _, chunk := range chunkedPath {
+			if filesOrDirsToIgnore[chunk] {
+				return chunk, true
+			}
+		}
+		return "", false
 	}
 
 	scanner := bufio.NewScanner(data)
@@ -136,9 +145,8 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 			return nil, err
 		}
 
-		fileName := parsed.path[len(parsed.path)-1]
-		if _, ok := filesToIgnore[fileName]; ok {
-			log.Debugf("ignore file %s", parsed.fullPath)
+		if match, ok := shouldIgnorePath(parsed.path); ok {
+			log.Debugf("ignore %s because of %s", parsed.fullPath, match)
 			continue
 		}
 

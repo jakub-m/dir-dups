@@ -21,6 +21,7 @@ func main() {
 	if opts.debug {
 		log.DebugEnabled = true
 	}
+	log.Printf("Ignoring: %v", opts.ignoreFilesOrDirs)
 	log.Debugf("options: %+v", opts)
 
 	if opts.profile != "" {
@@ -36,7 +37,7 @@ func main() {
 	inputNodes := []*analyze.Node{}
 	for _, path := range opts.paths {
 		log.Printf("loading: %s", path)
-		node, err := loadNode(path, opts.ignoreUnimportant)
+		node, err := loadNode(path, opts.ignoreFilesOrDirs)
 		if err != nil {
 			log.Fatalf("cannot load file %s: %v", path, err)
 		}
@@ -190,47 +191,14 @@ func getNodeSetForPrintTree(root *analyze.Node, meta map[*analyze.Node]nodeMeta)
 	return set
 }
 
-type options struct {
-	debug                bool
-	verbose              bool
-	ignoreUnimportant    bool
-	paths                []string
-	profile              string
-	sort                 bool
-	tree                 bool
-	selectDuplicatedDirs bool
-}
-
-func getOptions() options {
-	opts := options{}
-	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
-	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
-	flag.BoolVar(&opts.sort, "s", false, "Sort output")
-	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
-	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
-	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
-	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
-	flag.Parse()
-	if len(flag.Args()) == 0 {
-		log.Fatalf("expecting at least one argument with path with the list")
-	}
-	opts.paths = flag.Args()
-	return opts
-}
-
-func loadNode(path string, ignoreUnimportant bool) (*analyze.Node, error) {
+func loadNode(path string, filesOrPathsToIgnore []string) (*analyze.Node, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-
-	filesToIgnore := []string{"Thumbs.db", "._.DS_Store", ".DS_Store"}
-	if ignoreUnimportant {
-		log.Printf("ignoring files: %v", filesToIgnore)
-	}
 	opts := analyze.LoadOpts{
-		FilesToIgnore: filesToIgnore,
+		FilesOrDirsToIgnore: filesOrPathsToIgnore,
 	}
 	return analyze.LoadNodesFromFileListOpts(f, opts)
 }
@@ -269,4 +237,47 @@ func getFirstNamedNode(node *analyze.Node) *analyze.Node {
 		}
 	}
 	return node
+}
+
+type options struct {
+	debug                bool
+	verbose              bool
+	ignoreFilesOrDirs    []string
+	paths                []string
+	profile              string
+	sort                 bool
+	tree                 bool
+	selectDuplicatedDirs bool
+}
+
+func getOptions() options {
+	opts := options{
+		ignoreFilesOrDirs: []string{"Thumbs.db", "._.DS_Store", ".DS_Store"},
+	}
+	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
+	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
+	flag.BoolVar(&opts.sort, "s", false, "Sort output")
+	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
+	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
+	flag.Var(commaSplitter{&opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Names of files or directores to ignore (default %v)", opts.ignoreFilesOrDirs))
+	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
+	flag.Parse()
+	if len(flag.Args()) == 0 {
+		log.Fatalf("expecting at least one argument with path with the list")
+	}
+	opts.paths = flag.Args()
+	return opts
+}
+
+type commaSplitter struct {
+	dest *[]string
+}
+
+func (s commaSplitter) Set(input string) error {
+	*s.dest = strings.Split(input, ",")
+	return nil
+}
+
+func (s commaSplitter) String() string {
+	return "commaSplitter"
 }

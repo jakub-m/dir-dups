@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"greasytoad/log"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	log.DebugEnabled = true
+}
 
 func TestFindSimilarSimple(t *testing.T) {
 	t.Skip()

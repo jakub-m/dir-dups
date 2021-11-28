@@ -110,10 +110,11 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 
 	var nodeFilter func([]*analyze.Node) []*analyze.Node
 	if opts.selectDuplicatedDirs {
+		shouldPrint := getNodeSetForPrintTree(root, meta)
 		nodeFilter = func(nodes []*analyze.Node) []*analyze.Node {
 			selected := []*analyze.Node{}
 			for _, node := range nodes {
-				if m, ok := meta[node]; ok && m.similarityType == analyze.FullDuplicate && !node.IsFile() {
+				if ok := shouldPrint[node]; ok {
 					selected = append(selected, node)
 				}
 			}
@@ -165,6 +166,30 @@ func printTree(root *analyze.Node,
 	printTreeRec(root, "", "")
 }
 
+// getNodeSetForPrintTree returns a node set that can be later used to determine which nodes should be printed in the tree. If a
+func getNodeSetForPrintTree(root *analyze.Node, meta map[*analyze.Node]nodeMeta) map[*analyze.Node]bool {
+	set := make(map[*analyze.Node]bool)
+
+	var rec func(*analyze.Node)
+	rec = func(current *analyze.Node) {
+		for _, child := range current.Children {
+			rec(child)
+			if set[child] {
+				// if a node is selected for printing, then recursively select all the nodes that lead to that node.
+				set[current] = true
+			}
+		}
+
+		if m, ok := meta[current]; ok && m.similarityType == analyze.FullDuplicate && !current.IsFile() {
+			set[current] = true
+		}
+
+	}
+	rec(root)
+
+	return set
+}
+
 type options struct {
 	debug                bool
 	verbose              bool
@@ -183,7 +208,6 @@ func getOptions() options {
 	flag.BoolVar(&opts.sort, "s", false, "Sort output")
 	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
 	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
-	// flag.BoolVar(&opts.printAll, "p", false, "Print all paths. The alternative is to not descend to directories that are all full duplicates or unique.")
 	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
 	flag.Parse()

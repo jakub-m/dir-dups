@@ -48,7 +48,7 @@ func main() {
 	tree := mergeNodesIntoSingleTree(inputNodes...)
 
 	if opts.tree {
-		printSimilarityTree(tree)
+		printSimilarityTree(tree, opts)
 	} else {
 		printSimilarityFlat(tree, opts)
 	}
@@ -84,7 +84,7 @@ type nodeMeta struct {
 	similar        []*analyze.Node
 }
 
-func printSimilarityTree(root *analyze.Node) {
+func printSimilarityTree(root *analyze.Node, opts options) {
 	meta := make(map[*analyze.Node]nodeMeta)
 	analyze.FindSimilarities(root, func(st analyze.SimilarityType, nodes []*analyze.Node) {
 		for _, n := range nodes {
@@ -108,13 +108,36 @@ func printSimilarityTree(root *analyze.Node) {
 		}
 	}
 
-	printTree(getFirstNamesNode(root), decorator)
+	var nodeFilter func([]*analyze.Node) []*analyze.Node
+	if opts.selectDuplicatedDirs {
+		nodeFilter = func(nodes []*analyze.Node) []*analyze.Node {
+			selected := []*analyze.Node{}
+			for _, node := range nodes {
+				if m, ok := meta[node]; ok && m.similarityType == analyze.FullDuplicate && !node.IsFile() {
+					selected = append(selected, node)
+				}
+			}
+			return selected
+		}
+	} else {
+		nodeFilter = nodeSelectorAll
+	}
+
+	printTree(getFirstNamedNode(root), decorator, nodeFilter)
 }
 
-func printTree(root *analyze.Node, decorator func(*analyze.Node) string) {
+func nodeSelectorAll(nodes []*analyze.Node) []*analyze.Node {
+	return nodes
+}
+
+func printTree(root *analyze.Node,
+	decorator func(*analyze.Node) string,
+	nodeFilter func([]*analyze.Node) []*analyze.Node,
+) {
 	var printTreeRec func(*analyze.Node, string, string)
 	printTreeRec = func(node *analyze.Node, immediatePrefix, spacePrefix string) {
 		children := node.ChildrenSlice()
+		children = nodeFilter(children)
 		sort.Slice(children, func(i, j int) bool {
 			return children[i].Name < children[j].Name
 		})
@@ -143,13 +166,14 @@ func printTree(root *analyze.Node, decorator func(*analyze.Node) string) {
 }
 
 type options struct {
-	debug             bool
-	verbose           bool
-	ignoreUnimportant bool
-	paths             []string
-	profile           string
-	sort              bool
-	tree              bool
+	debug                bool
+	verbose              bool
+	ignoreUnimportant    bool
+	paths                []string
+	profile              string
+	sort                 bool
+	tree                 bool
+	selectDuplicatedDirs bool
 }
 
 func getOptions() options {
@@ -158,6 +182,7 @@ func getOptions() options {
 	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
 	flag.BoolVar(&opts.sort, "s", false, "Sort output")
 	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
+	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
 	// flag.BoolVar(&opts.printAll, "p", false, "Print all paths. The alternative is to not descend to directories that are all full duplicates or unique.")
 	flag.BoolVar(&opts.ignoreUnimportant, "ignore-unimportant", true, "Ignore unimportant files like DS_Store")
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
@@ -213,10 +238,10 @@ func formatNodesPaths(nodes []*analyze.Node) string {
 	return strings.Join(analyze.FormatNodes(nodes, fullPath), "\t")
 }
 
-func getFirstNamesNode(node *analyze.Node) *analyze.Node {
+func getFirstNamedNode(node *analyze.Node) *analyze.Node {
 	if node.Name == "" && len(node.Children) == 1 {
 		for _, ch := range node.Children {
-			return getFirstNamesNode(ch)
+			return getFirstNamedNode(ch)
 		}
 	}
 	return node

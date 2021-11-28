@@ -93,16 +93,20 @@ func printSimilarityTree(root *analyze.Node, opts options) {
 		}
 	})
 
-	decorator := func(n *analyze.Node) string {
+	decorator := func(n *analyze.Node, isFirst bool) string {
 		if m, ok := meta[n]; ok {
 			if m.similarityType == analyze.FullDuplicate {
-				return fmt.Sprintf("\t[%s %dx%s %s %s]",
-					m.similarityType,
-					len(m.similar),
-					libstrings.FormatBytes(n.Size),
-					m.similar[0].Hash,
-					n.FullPath(),
-				)
+				decorations := []string{
+					fmt.Sprintf("%s %dx%s %s",
+						m.similarityType,
+						len(m.similar),
+						libstrings.FormatBytes(n.Size),
+						m.similar[0].Hash),
+				}
+				if isFirst {
+					decorations = append(decorations, n.FullPath())
+				}
+				return fmt.Sprintf("\t[%s]", strings.Join(decorations, " "))
 			} else {
 				return fmt.Sprintf("\t[%s]", m.similarityType)
 			}
@@ -142,18 +146,19 @@ func nodeSelectorWithSet(shouldSelectSet map[*analyze.Node]bool) func([]*analyze
 }
 
 func printTree(root *analyze.Node,
-	decorator func(*analyze.Node) string,
+	decorator func(*analyze.Node, bool) string,
 	nodeFilter func([]*analyze.Node) []*analyze.Node,
 ) {
-	var printTreeRec func(*analyze.Node, string, string)
-	printTreeRec = func(node *analyze.Node, immediatePrefix, spacePrefix string) {
+	var printTreeRec func(*analyze.Node, int, string, string)
+	printTreeRec = func(node *analyze.Node, nodeIndex int, immediatePrefix, spacePrefix string) {
 		children := node.ChildrenSlice()
 		children = nodeFilter(children)
 		sort.Slice(children, func(i, j int) bool {
 			return children[i].Name < children[j].Name
 		})
 
-		additional := decorator(node)
+		isFirst := nodeIndex == 0
+		additional := decorator(node, isFirst)
 		fmt.Printf("%s%s%s\n", immediatePrefix, node.Name, additional)
 
 		for i, ch := range children {
@@ -169,11 +174,11 @@ func printTree(root *analyze.Node,
 			} else {
 				newSpacePrefix = spacePrefix + "│  "
 			}
-			printTreeRec(ch, newImmediatePrefix, newSpacePrefix)
+			printTreeRec(ch, i, newImmediatePrefix, newSpacePrefix)
 		}
 	}
 
-	printTreeRec(root, "", "")
+	printTreeRec(root, 0, "", "")
 }
 
 func getNodeSetForPrintTreeDirs(root *analyze.Node) map[*analyze.Node]bool {

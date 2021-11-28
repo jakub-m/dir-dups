@@ -259,7 +259,7 @@ func getOptions() options {
 	flag.BoolVar(&opts.sort, "s", false, "Sort output")
 	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
 	flag.BoolVar(&opts.selectDuplicatedDirs, "dd", false, "Select only duplicated directories")
-	flag.Var(commaSplitter{&opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Names of files or directores to ignore (default %v)", opts.ignoreFilesOrDirs))
+	flag.Var(commaSplitter{&opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Comma separated of files or directores to ignore (default %+v)", opts.ignoreFilesOrDirs))
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
 	flag.Parse()
 	if len(flag.Args()) == 0 {

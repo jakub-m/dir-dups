@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"greasytoad/analyze"
+	libflag "greasytoad/flag"
+	"greasytoad/load"
 	"greasytoad/log"
 	libstrings "greasytoad/strings"
 	"os"
@@ -34,19 +36,9 @@ func main() {
 
 	}
 
-	inputNodes := []*analyze.Node{}
-	for _, path := range opts.paths {
-		log.Printf("loading: %s", path)
-		node, err := loadNode(path, opts.ignoreFilesOrDirs)
-		if err != nil {
-			log.Fatalf("cannot load file %s: %v", path, err)
-		}
-		log.Printf("size: %s", libstrings.FormatBytes(node.Size))
-		inputNodes = append(inputNodes, node)
-	}
-
-	nameRoots(inputNodes...)
-	tree := mergeNodesIntoSingleTree(inputNodes...)
+	inputNodes := load.LoadNodesFromPaths(opts.paths, opts.ignoreFilesOrDirs)
+	load.RenameRoots(inputNodes...)
+	tree := analyze.MergeNodes(inputNodes...)
 
 	if opts.tree {
 		printSimilarityTree(tree, opts)
@@ -221,40 +213,6 @@ func getNodeSetForPrintTreeDuplicateDirs(root *analyze.Node, meta map[*analyze.N
 	return set
 }
 
-func loadNode(path string, filesOrPathsToIgnore []string) (*analyze.Node, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	opts := analyze.LoadOpts{
-		FilesOrDirsToIgnore: filesOrPathsToIgnore,
-	}
-	return analyze.LoadNodesFromFileListOpts(f, opts)
-}
-
-func nameRoots(nodes ...*analyze.Node) error {
-	if len(nodes) == 1 {
-		return nil
-	}
-	letters := "abcdefghijklmnopqrstuvxyz"
-	if len(nodes) > len(letters) {
-		return fmt.Errorf("input too large, max %d entries", len(letters))
-	}
-	for i, node := range nodes {
-		node.Name = fmt.Sprintf("%c", letters[i])
-	}
-	return nil
-}
-
-func mergeNodesIntoSingleTree(nodes ...*analyze.Node) *analyze.Node {
-	root := analyze.NewNode("")
-	for _, node := range nodes {
-		root.Children[node.Name] = node
-	}
-	return root
-}
-
 func formatNodesPaths(nodes []*analyze.Node) string {
 	fullPath := func(n *analyze.Node) string { return n.FullPath() }
 	return strings.Join(analyze.FormatNodes(nodes, fullPath), "\t")
@@ -283,7 +241,7 @@ type options struct {
 
 func getOptions() options {
 	opts := options{
-		ignoreFilesOrDirs: []string{"Thumbs.db", "._.DS_Store", ".DS_Store"},
+		ignoreFilesOrDirs: load.GetDefaultIgnoredFilesAndDirs(),
 	}
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
 	flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
@@ -291,7 +249,7 @@ func getOptions() options {
 	flag.BoolVar(&opts.tree, "t", false, "Print as tree")
 	flag.BoolVar(&opts.selectDirs, "dirs", false, "Select only directories")
 	flag.BoolVar(&opts.selectDuplicatedDirs, "dupdirs", false, "Select only duplicated directories")
-	flag.Var(commaSplitter{&opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Comma separated of files or directores to ignore (default %+v)", opts.ignoreFilesOrDirs))
+	flag.Var(libflag.CommaSepValue{Value: &opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Comma separated of files or directores to ignore (default %+v)", opts.ignoreFilesOrDirs))
 	flag.StringVar(&opts.profile, "pprof", "", "run profiling")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
@@ -299,17 +257,4 @@ func getOptions() options {
 	}
 	opts.paths = flag.Args()
 	return opts
-}
-
-type commaSplitter struct {
-	dest *[]string
-}
-
-func (s commaSplitter) Set(input string) error {
-	*s.dest = strings.Split(input, ",")
-	return nil
-}
-
-func (s commaSplitter) String() string {
-	return "commaSplitter"
 }

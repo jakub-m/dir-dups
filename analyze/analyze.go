@@ -118,6 +118,7 @@ type LoadOpts struct {
 	FilesOrDirsToIgnore []string
 }
 
+// LoadNodesFromFileListOpts loads Nodes from a file with list of files with sizes and signatures, a result of "listfiles" tool.
 func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 	filesOrDirsToIgnore := make(map[string]bool)
 	if opts.FilesOrDirsToIgnore != nil {
@@ -140,7 +141,12 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 	root := NewNode("")
 
 	for scanner.Scan() {
-		parsed, err := parseLine(scanner.Text())
+		line := strings.Trim(scanner.Text(), " \r\n")
+		if len(line) == 0 {
+			// Ignore empty lines. This is useful especially when concatenating input files.
+			continue
+		}
+		parsed, err := parseLine(line)
 		if err != nil {
 			return nil, err
 		}
@@ -180,6 +186,23 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 		return nil, err
 	}
 
+	updateTreeValues(root)
+	return root, nil
+}
+
+func MergeNodes(nodes ...*Node) *Node {
+	root := NewNode("")
+	for _, node := range nodes {
+		if _, exists := root.Children[node.Name]; exists {
+			log.Fatalf("Cannot merge nodes with same name, consider renaming. Offending name: '%s'", node.Name)
+		}
+		root.Children[node.Name] = node
+	}
+	updateTreeValues(root)
+	return root
+}
+
+func updateTreeValues(root *Node) {
 	// recalculate sizes
 	var updateSizeRec func(node *Node)
 	updateSizeRec = func(node *Node) {
@@ -206,8 +229,6 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 		node.Hash = calculateHash(node)
 	}
 	updateHashRec(root)
-
-	return root, nil
 }
 
 func calculateHashFromString(s string) hash {

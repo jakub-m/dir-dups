@@ -26,12 +26,13 @@ func main() {
 		if st != analyze.FullDuplicate {
 			return
 		}
-		if coll.Any(nodes, func(n *analyze.Node) bool { return n.IsFile() }) {
+		isFile := func(n *analyze.Node) bool { return n.IsFile() }
+		if coll.Any(nodes, isFile) {
 			return
 		}
 		fileCount, size := -1, -1
 		for _, n := range nodes {
-			fmt.Printf("keep\t%s\n", n.FullPath())
+			fmt.Printf("keep\t%s\t%s\n", n.Hash, n.FullPath())
 			if fileCount != -1 && fileCount != n.FileCount {
 				log.Fatalf("RATS! the nodes reported as similar but have different file counts: %v", nodes)
 			}

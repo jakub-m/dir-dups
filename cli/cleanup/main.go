@@ -78,7 +78,7 @@ func processListfilesToManifest(opts options) {
 		}
 		fileCount, size := -1, -1
 		for _, n := range nodes {
-			fmt.Fprintf(manifestFile, "keep\t%s\t%s\n", n.Hash, n.FullPath())
+			fmt.Fprintf(manifestFile, "%s\t%s\t%s\n", Keep, n.Hash, n.FullPath())
 			if fileCount != -1 && fileCount != n.FileCount {
 				log.Fatalf("RATS! the nodes reported as similar but have different file counts: %v", nodes)
 			}

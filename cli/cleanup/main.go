@@ -11,6 +11,7 @@ import (
 	"greasytoad/load"
 	"greasytoad/log"
 	"greasytoad/strings"
+	"os"
 )
 
 func main() {
@@ -18,8 +19,26 @@ func main() {
 	log.DebugEnabled = opts.debug
 	log.Debugf("options: %+v", opts)
 
+	if len(opts.pathsToFileLists) == 0 {
+		transformManifestToBash(opts)
+	} else {
+		processListfilesToManifest(opts)
+	}
+}
+
+func processListfilesToManifest(opts options) {
 	root := load.LoadNodesFromConctenatedFiles(opts.pathsToFileLists, opts.ignoreFilesOrDirs)
-	log.Printf("merged size: %s", strings.FormatBytes(root.Size))
+	log.Printf("merged input size: %s", strings.FormatBytes(root.Size))
+
+	manifestFile := os.Stdout
+	if opts.manifestFile != "" {
+		f, err := os.Create(opts.manifestFile)
+		if err != nil {
+			log.Fatalf("Cannot open %s for writing: %v", opts.manifestFile, err)
+		}
+		manifestFile = f
+		defer manifestFile.Close()
+	}
 
 	totalSavingBytes := 0
 	analyze.FindSimilarities(root, func(st analyze.SimilarityType, nodes []*analyze.Node) {
@@ -32,7 +51,7 @@ func main() {
 		}
 		fileCount, size := -1, -1
 		for _, n := range nodes {
-			fmt.Printf("keep\t%s\t%s\n", n.Hash, n.FullPath())
+			fmt.Fprintf(manifestFile, "keep\t%s\t%s\n", n.Hash, n.FullPath())
 			if fileCount != -1 && fileCount != n.FileCount {
 				log.Fatalf("RATS! the nodes reported as similar but have different file counts: %v", nodes)
 			}
@@ -41,29 +60,23 @@ func main() {
 			}
 			fileCount, size = n.FileCount, n.Size
 		}
-		fmt.Printf("# %d dirs, each %s in %d files\n", len(nodes), strings.FormatBytes(size), fileCount)
-		fmt.Println("#")
+		fmt.Fprintf(manifestFile, "# %d dirs, each %s in %d files\n", len(nodes), strings.FormatBytes(size), fileCount)
+		fmt.Fprintf(manifestFile, "#\n")
 		totalSavingBytes += (len(nodes) - 1) * size
 	})
 
-	fmt.Printf("# Total %s of duplicates to remove\n", strings.FormatBytes(totalSavingBytes))
+	fmt.Fprintf(manifestFile, "# Total %s of duplicates to remove\n", strings.FormatBytes(totalSavingBytes))
+}
 
-	// re-run tool with updated manifest
-	// dry-run, genereate bash commands if all good (all entries from manifest used AND all dirs in manifest)
-	// run bash commands
+func transformManifestToBash(opts options) {
+
 }
 
 type options struct {
-	debug bool
-	// verbose              bool
+	debug             bool
 	ignoreFilesOrDirs []string
-	// paths             []string
-	// profile              string
-	// sort                 bool
-	// tree                 bool
-	// selectDirs           bool
-	// selectDuplicatedDirs bool
-	pathsToFileLists []string
+	pathsToFileLists  []string
+	manifestFile      string
 }
 
 func getOptions() options {
@@ -71,16 +84,8 @@ func getOptions() options {
 		ignoreFilesOrDirs: load.GetDefaultIgnoredFilesAndDirs(),
 	}
 	flag.Var(libflag.NewStringList(&opts.pathsToFileLists), "l", "Path to result of \"listfiles\" command. Can be set many times.")
+	flag.StringVar(&opts.manifestFile, "m", "", "Path to manifest file. If listfiles are not set, then this command will parse manifest file and return bash script")
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
-	// flag.BoolVar(&opts.verbose, "v", false, "More verbose logging")
-	//flag.Var(libflag.CommaSepValue{Value: &opts.ignoreFilesOrDirs}, "i", fmt.Sprintf("Comma separated of files or directores to ignore (default %+v)", opts.ignoreFilesOrDirs))
-	//flag.Var(libflag.NewStringList(), "i", "Input directorwies")
-	// flag.String(opts.ManifestPath "", "")
-	// flag.Parse()
-	// if len(flag.Args()) == 0 {
-	// 	log.Fatalf("expecting at least one argument with path with the list")
-	// }
-	// opts.paths = flag.Args()
 	flag.Parse()
 	if len(opts.pathsToFileLists) < 1 {
 		log.Fatalf("expecting at least one path to list of files.")

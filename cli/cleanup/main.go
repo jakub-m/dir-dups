@@ -15,6 +15,7 @@ import (
 	"greasytoad/strings"
 	"io"
 	"os"
+	"path"
 	"regexp"
 	gostrings "strings"
 	"text/template"
@@ -37,6 +38,7 @@ type options struct {
 	ignoreFilesOrDirs []string
 	pathsToFileLists  []string
 	manifestFile      string
+	targetPrefix      string
 }
 
 func getOptions() options {
@@ -46,6 +48,7 @@ func getOptions() options {
 	flag.Var(libflag.NewStringList(&opts.pathsToFileLists), "l", "Path to result of \"listfiles\" command. Can be set many times.")
 	flag.StringVar(&opts.manifestFile, "m", "", "Path to manifest file. If listfiles are not set, then this command will parse manifest file and return bash script")
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
+	flag.StringVar(&opts.targetPrefix, "t", "", "Target directory for moving the files")
 	flag.Parse()
 	return opts
 }
@@ -93,9 +96,9 @@ func processListfilesToManifest(opts options) {
 }
 
 func transformManifestToBash(opts options) {
-	// Parse existing manifest
-	// Verify that for each hash there is at least one "keep"
-	// Produce bash file that can be safely executed.
+	if opts.targetPrefix == "" {
+		log.Fatalf(`Set target path with "-t"`)
+	}
 
 	f, err := os.Open(opts.manifestFile)
 	if err != nil {
@@ -113,11 +116,24 @@ func transformManifestToBash(opts options) {
 	if err != nil {
 		log.Fatalf("template error: %v", err)
 	}
-	data := struct{ Manifest Manifest }{manifest}
+	data := TransformSlice(manifest, func(m ManifestEntry) DataEntry {
+		return DataEntry{
+			ManifestEntry: m,
+			TargetPath:    path.Join(opts.targetPrefix, m.Path),
+		}
+	})
+
 	err = tmpl.Execute(os.Stdout, data)
 	if err != nil {
 		log.Fatalf("template error: %v", err)
 	}
+}
+
+type Data []DataEntry
+
+type DataEntry struct {
+	ManifestEntry
+	TargetPath string
 }
 
 func verifyOneKeepPerHash(manifest Manifest) {
@@ -183,3 +199,11 @@ const (
 
 //go:embed bash.gotemplate
 var templateBody string
+
+func TransformSlice[S, T any](ss []S, fn func(S) T) []T {
+	tt := []T{}
+	for _, s := range ss {
+		tt = append(tt, fn(s))
+	}
+	return tt
+}

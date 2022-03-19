@@ -2,16 +2,27 @@
 
 set -eu
 
+input_paths=()
+{{range . -}}
+input_paths+=("{{.Path}}")
+{{end}}
+
+target_paths=()
+{{range . -}}
+target_paths+=("{{.TargetPath}}")
+{{end}}
+
 echo "Check preconditions, if all the input files exist"
 
-input_files=()
-{{range .Manifest -}}
-input_files+=("{{.Path}}")
-{{end -}}
-
-for file in ${input_files[@]};do
-    if [[ ! -e "${file}"]]; then
-        echo "Missing file {$file}. Aborting."
+for path in ${input_paths[@]}; do
+    if [[ ! -d "${path}"]]; then
+        echo "Missing dir {$path}. Aborting."
         exit 1
     fi
+done
+
+echo "Prepare target directory tree"
+
+for path in ${target_path[@]}; do
+    mkdir -p "${path}"
 done

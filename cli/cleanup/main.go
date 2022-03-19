@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bufio"
+	_ "embed"
 	"flag"
 	"fmt"
 	"greasytoad/analyze"
@@ -11,7 +13,11 @@ import (
 	"greasytoad/load"
 	"greasytoad/log"
 	"greasytoad/strings"
+	"io"
 	"os"
+	"regexp"
+	gostrings "strings"
+	"text/template"
 )
 
 func main() {
@@ -24,6 +30,24 @@ func main() {
 	} else {
 		processListfilesToManifest(opts)
 	}
+}
+
+type options struct {
+	debug             bool
+	ignoreFilesOrDirs []string
+	pathsToFileLists  []string
+	manifestFile      string
+}
+
+func getOptions() options {
+	opts := options{
+		ignoreFilesOrDirs: load.GetDefaultIgnoredFilesAndDirs(),
+	}
+	flag.Var(libflag.NewStringList(&opts.pathsToFileLists), "l", "Path to result of \"listfiles\" command. Can be set many times.")
+	flag.StringVar(&opts.manifestFile, "m", "", "Path to manifest file. If listfiles are not set, then this command will parse manifest file and return bash script")
+	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
+	flag.Parse()
+	return opts
 }
 
 func processListfilesToManifest(opts options) {
@@ -69,26 +93,93 @@ func processListfilesToManifest(opts options) {
 }
 
 func transformManifestToBash(opts options) {
+	// Parse existing manifest
+	// Verify that for each hash there is at least one "keep"
+	// Produce bash file that can be safely executed.
 
-}
-
-type options struct {
-	debug             bool
-	ignoreFilesOrDirs []string
-	pathsToFileLists  []string
-	manifestFile      string
-}
-
-func getOptions() options {
-	opts := options{
-		ignoreFilesOrDirs: load.GetDefaultIgnoredFilesAndDirs(),
+	f, err := os.Open(opts.manifestFile)
+	if err != nil {
+		log.Fatalf("failed to load manifest %s: %v", opts.manifestFile, err)
 	}
-	flag.Var(libflag.NewStringList(&opts.pathsToFileLists), "l", "Path to result of \"listfiles\" command. Can be set many times.")
-	flag.StringVar(&opts.manifestFile, "m", "", "Path to manifest file. If listfiles are not set, then this command will parse manifest file and return bash script")
-	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
-	flag.Parse()
-	if len(opts.pathsToFileLists) < 1 {
-		log.Fatalf("expecting at least one path to list of files.")
+	defer f.Close()
+	manifest, err := parseManifest(f)
+	if err != nil {
+		log.Fatalf("failed to parse manifest %s: %v", opts.manifestFile, err)
 	}
-	return opts
+
+	verifyOneKeepPerHash(manifest)
+
+	tmpl, err := template.New("bashTemplate").Parse(templateBody)
+	if err != nil {
+		log.Fatalf("template error: %v", err)
+	}
+	data := struct{ Manifest Manifest }{manifest}
+	err = tmpl.Execute(os.Stdout, data)
+	if err != nil {
+		log.Fatalf("template error: %v", err)
+	}
 }
+
+func verifyOneKeepPerHash(manifest Manifest) {
+	hashHasKeep := make(map[string]bool)
+	for _, m := range manifest {
+		hashHasKeep[m.Hash] = hashHasKeep[m.Hash] || (m.Operation == Keep)
+	}
+	shouldFail := false
+	for h, b := range hashHasKeep {
+		if !b {
+			log.Fatalf("No \"keep\" for: %s", h)
+			shouldFail = true
+		}
+	}
+	if shouldFail {
+		log.Fatalf("There must be at least one \"keep\" for each hash. Aborting.")
+	}
+}
+
+var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
+
+func parseManifest(r io.Reader) (Manifest, error) {
+	manifest := Manifest{}
+	s := bufio.NewScanner(r)
+	nLine := 0
+	for s.Scan() {
+		nLine++
+		line := s.Text()
+		if gostrings.HasPrefix(line, "#") {
+			continue
+		}
+		submatches := manifestLineRegex.FindStringSubmatch(line)
+		if submatches == nil {
+			return manifest, fmt.Errorf("illegal line %d: '%s'", nLine, line)
+		}
+		me := ManifestEntry{
+			Operation: ManifestOperation(submatches[1]),
+			Hash:      submatches[2],
+			Path:      submatches[3],
+		}
+		manifest = append(manifest, me)
+	}
+	if err := s.Err(); err != nil {
+		return Manifest{}, err
+	}
+	return manifest, nil
+}
+
+type Manifest []ManifestEntry
+
+type ManifestEntry struct {
+	Operation ManifestOperation
+	Hash      string
+	Path      string
+}
+
+type ManifestOperation string
+
+const (
+	Keep ManifestOperation = "keep"
+	Move                   = "move"
+)
+
+//go:embed bash.gotemplate
+var templateBody string

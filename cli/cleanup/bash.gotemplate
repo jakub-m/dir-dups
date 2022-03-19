@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -eu
+
+echo "Check preconditions, if all the input files exist"
+
+input_files=()
+{{range .Manifest -}}
+input_files+=("{{.Path}}")
+{{end -}}
+
+for file in ${input_files[@]};do
+    if [[ ! -e "${file}"]]; then
+        echo "Missing file {$file}. Aborting."
+        exit 1
+    fi
+done

@@ -39,6 +39,7 @@ type options struct {
 	manifestFile         string
 	targetPrefix         string
 	targetPrefixToRemove string
+	useCopyRemove        bool
 }
 
 func getOptions() options {
@@ -50,6 +51,7 @@ func getOptions() options {
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
 	flag.StringVar(&opts.targetPrefix, "t", "", "Target directory for moving the files")
 	flag.StringVar(&opts.targetPrefixToRemove, "p", "", "Common prefix to remove for target directories")
+	flag.BoolVar(&opts.useCopyRemove, "cp", false, "Use cp and rm instead of mv in case of \"Operation not supported\" error")
 	flag.Parse()
 	return opts
 }
@@ -137,6 +139,7 @@ func transformManifestToBash(opts options) {
 	getTargetPath := func(s DataEntry) string { return s.TargetPath }
 	isMove := func(s DataEntry) bool { return s.Operation == Move }
 	err = tmpl.Execute(os.Stdout, Data{
+		UseCpRm:     opts.useCopyRemove,
 		Entries:     dataEntries,
 		TargetPaths: coll.Uniq(coll.TransformSlice(coll.FilterSlice(dataEntries, isMove), getTargetPath)),
 	})
@@ -146,6 +149,7 @@ func transformManifestToBash(opts options) {
 }
 
 type Data struct {
+	UseCpRm     bool
 	Entries     []DataEntry
 	TargetPaths []string
 }

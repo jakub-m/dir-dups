@@ -34,11 +34,30 @@ for path in "${target_paths[@]}"; do
     mkdir -p "${path}"
 done
 
-{{range .Entries -}}
-    {{- if eq .Operation "move"}}
-mv -v "{{.Path}}" "{{.TargetPath}}"
-    {{- end -}}
+echo "Move files"
+
+{{if .UseCpRm -}}
+
+{{range $i, $e := .Entries -}}
+{{- if eq $e.Operation "move" -}}
+echo "{{$i}} {{$e.Path}}"
+cp -fr "{{$e.Path}}" "{{$e.TargetPath}}" || true
+rm -fr "{{$e.Path}}" || true
+{{end -}}
 {{end}}
+
+{{- else -}}
+
+{{range $i, $e := .Entries -}}
+{{- if eq $e.Operation "move" -}}
+echo "{{$i}} {{$e.Path}}"
+mv -f "{{$e.Path}}" "{{$e.TargetPath}}" || true
+{{end -}}
+{{end}}
+
+{{- end}}
+
+echo "Verify if all the kept files are there"
 
 for path in "${paths_to_keep[@]}"; do
     if [[ ! -d "${path}" ]]; then

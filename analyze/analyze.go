@@ -3,6 +3,7 @@ package analyze
 import (
 	"bufio"
 	"fmt"
+	coll "greasytoad/collections"
 	"greasytoad/log"
 	"hash/fnv"
 	"io"
@@ -72,15 +73,15 @@ func (n *Node) FullPath() string {
 
 func (n *Node) getFullPath() string {
 	parts := []string{}
-
 	d := n
 	for d != nil {
+		if d.IsRoot {
+			break
+		}
 		parts = append(parts, d.Name)
 		d = d.Parent
 	}
-	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
-		parts[i], parts[j] = parts[j], parts[i]
-	}
+	coll.ReverseSlice(parts)
 	if !n.IsFile() {
 		parts = append(parts, "") // append / to dir
 	}

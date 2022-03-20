@@ -25,7 +25,6 @@ func main() {
 	opts := getOptions()
 	log.DebugEnabled = opts.debug
 	log.Debugf("options: %+v", opts)
-
 	if len(opts.pathsToFileLists) == 0 {
 		transformManifestToBash(opts)
 	} else {
@@ -34,11 +33,12 @@ func main() {
 }
 
 type options struct {
-	debug             bool
-	ignoreFilesOrDirs []string
-	pathsToFileLists  []string
-	manifestFile      string
-	targetPrefix      string
+	debug                bool
+	ignoreFilesOrDirs    []string
+	pathsToFileLists     []string
+	manifestFile         string
+	targetPrefix         string
+	targetPrefixToRemove string
 }
 
 func getOptions() options {
@@ -49,6 +49,7 @@ func getOptions() options {
 	flag.StringVar(&opts.manifestFile, "m", "", "Path to manifest file. If listfiles are not set, then this command will parse manifest file and return bash script")
 	flag.BoolVar(&opts.debug, "d", false, "Debug logging")
 	flag.StringVar(&opts.targetPrefix, "t", "", "Target directory for moving the files")
+	flag.StringVar(&opts.targetPrefixToRemove, "p", "", "Common prefix to remove for target directories")
 	flag.Parse()
 	return opts
 }
@@ -120,6 +121,7 @@ func transformManifestToBash(opts options) {
 	}
 
 	verifyOneKeepPerHash(manifest)
+	verifyPathCommonPrefix(manifest, opts.targetPrefixToRemove)
 
 	tmpl, err := template.New("bashTemplate").Parse(templateBody)
 	if err != nil {
@@ -128,7 +130,7 @@ func transformManifestToBash(opts options) {
 	dataEntries := coll.TransformSlice(manifest, func(m ManifestEntry) DataEntry {
 		return DataEntry{
 			ManifestEntry: m,
-			TargetPath:    path.Join(opts.targetPrefix, path.Dir(gostrings.TrimRight(m.Path, "/"))),
+			TargetPath:    path.Join(opts.targetPrefix, path.Dir(removeCommonPrefix(opts.targetPrefixToRemove, path.Clean(m.Path)))),
 		}
 	})
 
@@ -168,6 +170,30 @@ func verifyOneKeepPerHash(manifest Manifest) {
 	if shouldFail {
 		log.Fatalf("There must be at least one \"keep\" for each hash. Aborting.")
 	}
+}
+
+func verifyPathCommonPrefix(manifest Manifest, prefix string) {
+	if prefix == "" {
+		return
+	}
+	for _, m := range manifest {
+		pathWitoutPrefix := removeCommonPrefix(prefix, m.Path)
+		if pathWitoutPrefix == m.Path {
+			log.Fatalf(`Path does not have common specified prefix: path "%s", prefix "%s"`, m.Path, prefix)
+		}
+	}
+}
+
+func removeCommonPrefix(prefix string, pathToModify string) string {
+	if prefix == "" {
+		return pathToModify
+	}
+	cleanPath := path.Clean(pathToModify)
+	cleanPrefix := path.Clean(prefix)
+	if gostrings.HasPrefix(cleanPath, cleanPrefix) {
+		return cleanPath[len(cleanPrefix):]
+	}
+	return pathToModify
 }
 
 var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)

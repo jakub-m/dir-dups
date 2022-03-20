@@ -13,7 +13,7 @@ mkdir -p tmp/a
 echo "x" > tmp/a/x
 echo "y" > tmp/a/y
 cp -r tmp/a tmp/b
-cp -r tmp/a tmp/c
+cp -r tmp/a "tmp/c c"
 
 
 #input_path=./tmp
@@ -30,7 +30,7 @@ echo "$list" | ./bin/cleanup -l -
 
 cat <<EOF | ./bin/cleanup -m - -t trash | tee tmp_clean.bash
 keep	1fb9e3ff04b12d5f	tmp/b/
-move	1fb9e3ff04b12d5f	tmp/c/
+move	1fb9e3ff04b12d5f	tmp/c c/
 move	1fb9e3ff04b12d5f	tmp/a/
 EOF
 

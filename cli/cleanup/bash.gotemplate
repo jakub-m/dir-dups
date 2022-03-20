@@ -21,7 +21,7 @@ paths_to_keep+=("{{.Path}}")
 
 echo "Check preconditions, if all the input files exist"
 
-for path in ${input_paths[@]}; do
+for path in "${input_paths[@]}"; do
     if [[ ! -d "${path}" ]]; then
         echo "Missing dir {$path}. Aborting."
         exit 1
@@ -30,7 +30,7 @@ done
 
 echo "Prepare target directory tree"
 
-for path in ${target_paths[@]}; do
+for path in "${target_paths[@]}"; do
     mkdir -p "${path}"
 done
 
@@ -40,7 +40,7 @@ mv -v "{{.Path}}" "{{.TargetPath}}"
     {{- end -}}
 {{end}}
 
-for path in ${paths_to_keep[@]}; do
+for path in "${paths_to_keep[@]}"; do
     if [[ ! -d "${path}" ]]; then
         echo "Missing: ${path}"
     fi

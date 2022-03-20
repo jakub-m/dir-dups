@@ -5,6 +5,7 @@ package load
 import (
 	"fmt"
 	"greasytoad/analyze"
+	coll "greasytoad/collections"
 	"greasytoad/log"
 	libstrings "greasytoad/strings"
 	"io"
@@ -17,13 +18,21 @@ func GetDefaultIgnoredFilesAndDirs() []string {
 
 func LoadNodesFromConctenatedFiles(paths []string, filesOrPathsToIgnore []string) *analyze.Node {
 	readers := []io.Reader{}
+	if len(coll.FilterSlice(paths, func(s string) bool { return s == "-" })) > 1 {
+		log.Fatalf(`expected at most one "-" input file`)
+	}
+
 	for _, path := range paths {
-		r, err := os.Open(path)
-		if err != nil {
-			log.Fatalf("failed to open %s: %v", path, err)
+		if path == "-" {
+			readers = append(readers, os.Stdin)
+		} else {
+			r, err := os.Open(path)
+			if err != nil {
+				log.Fatalf("failed to open %s: %v", path, err)
+			}
+			defer r.Close()
+			readers = append(readers, r)
 		}
-		defer r.Close()
-		readers = append(readers, r)
 	}
 	multiReader := io.MultiReader(readers...)
 	opts := analyze.LoadOpts{

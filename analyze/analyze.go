@@ -25,6 +25,8 @@ type Node struct {
 	Children       map[string]*Node // map children node name to node
 	Parent         *Node            `json:"-"`
 	cachedFullPath *string
+	// IsRoot tells if the node is a root node. Mind that the root node is not a root of directory tree. Root node does not have any parent.
+	IsRoot bool
 }
 
 type SimilarityType int
@@ -138,7 +140,7 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 
 	scanner := bufio.NewScanner(data)
 
-	root := NewNode("")
+	root := NewRootNode()
 
 	for scanner.Scan() {
 		line := strings.Trim(scanner.Text(), " \r\n")
@@ -191,7 +193,7 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 }
 
 func MergeNodes(nodes ...*Node) *Node {
-	root := NewNode("")
+	root := NewRootNode()
 	for _, node := range nodes {
 		if _, exists := root.Children[node.Name]; exists {
 			log.Fatalf("Cannot merge nodes with same name, consider renaming. Offending name: '%s'", node.Name)
@@ -271,6 +273,14 @@ func NewNode(name string) *Node {
 		Name:     name,
 		Children: make(map[string]*Node),
 	}
+}
+
+// NewRootNode returns a node that is a root to all the node tree. This is NOT a root directort. The root directory
+// would be a single node under the root node.
+func NewRootNode() *Node {
+	r := NewNode("")
+	r.IsRoot = true
+	return r
 }
 
 type parsed struct {

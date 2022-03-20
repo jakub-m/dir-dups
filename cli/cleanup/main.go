@@ -116,7 +116,7 @@ func transformManifestToBash(opts options) {
 	if err != nil {
 		log.Fatalf("template error: %v", err)
 	}
-	dataEntries := TransformSlice(manifest, func(m ManifestEntry) DataEntry {
+	dataEntries := coll.TransformSlice(manifest, func(m ManifestEntry) DataEntry {
 		return DataEntry{
 			ManifestEntry: m,
 			TargetPath:    path.Join(opts.targetPrefix, path.Dir(gostrings.TrimRight(m.Path, "/"))),
@@ -127,7 +127,7 @@ func transformManifestToBash(opts options) {
 	isMove := func(s ManifestEntry) bool { return s.Operation == Move }
 	err = tmpl.Execute(os.Stdout, Data{
 		Entries:     dataEntries,
-		TargetPaths: Uniq(TransformSlice(FilterSlice(manifest, isMove), getPath)),
+		TargetPaths: coll.Uniq(coll.TransformSlice(coll.FilterSlice(manifest, isMove), getPath)),
 	})
 	if err != nil {
 		log.Fatalf("template error: %v", err)
@@ -207,33 +207,3 @@ const (
 
 //go:embed bash.gotemplate
 var templateBody string
-
-func TransformSlice[S, T any](ss []S, fn func(S) T) []T {
-	tt := []T{}
-	for _, s := range ss {
-		tt = append(tt, fn(s))
-	}
-	return tt
-}
-
-func Uniq[T comparable](ss []T) []T {
-	m := make(map[T]bool)
-	for _, s := range ss {
-		m[s] = true
-	}
-	u := []T{}
-	for k := range m {
-		u = append(u, k)
-	}
-	return u
-}
-
-func FilterSlice[T any](ss []T, fn func(T) bool) []T {
-	out := []T{}
-	for _, s := range ss {
-		if fn(s) {
-			out = append(out, s)
-		}
-	}
-	return out
-}

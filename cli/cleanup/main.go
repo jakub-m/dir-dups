@@ -100,11 +100,17 @@ func transformManifestToBash(opts options) {
 		log.Fatalf(`Set target path with "-t"`)
 	}
 
-	f, err := os.Open(opts.manifestFile)
-	if err != nil {
-		log.Fatalf("failed to load manifest %s: %v", opts.manifestFile, err)
+	var f *os.File
+	if opts.manifestFile == "-" {
+		f = os.Stdin
+	} else {
+		f, err := os.Open(opts.manifestFile)
+		if err != nil {
+			log.Fatalf("failed to load manifest %s: %v", opts.manifestFile, err)
+		}
+		defer f.Close()
 	}
-	defer f.Close()
+
 	manifest, err := parseManifest(f)
 	if err != nil {
 		log.Fatalf("failed to parse manifest %s: %v", opts.manifestFile, err)

@@ -100,18 +100,21 @@ func transformManifestToBash(opts options) {
 		log.Fatalf(`Set target path with "-t"`)
 	}
 
-	var f *os.File
+	var manifestFile *os.File
 	if opts.manifestFile == "-" {
-		f = os.Stdin
+		log.Debugf("transformManifestToBash: use stdin as reader")
+		manifestFile = os.Stdin
 	} else {
-		f, err := os.Open(opts.manifestFile)
+		log.Debugf("transformManifestToBash: open manifest file \"%s\"", opts.manifestFile)
+		r, err := os.Open(opts.manifestFile)
+		manifestFile = r
 		if err != nil {
 			log.Fatalf("failed to load manifest %s: %v", opts.manifestFile, err)
 		}
-		defer f.Close()
+		defer manifestFile.Close()
 	}
 
-	manifest, err := parseManifest(f)
+	manifest, err := parseManifest(manifestFile)
 	if err != nil {
 		log.Fatalf("failed to parse manifest %s: %v", opts.manifestFile, err)
 	}
@@ -170,6 +173,7 @@ func verifyOneKeepPerHash(manifest Manifest) {
 var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
 
 func parseManifest(r io.Reader) (Manifest, error) {
+	log.Debugf("parseManifest: r=%v", r)
 	manifest := Manifest{}
 	s := bufio.NewScanner(r)
 	nLine := 0
@@ -191,7 +195,7 @@ func parseManifest(r io.Reader) (Manifest, error) {
 		manifest = append(manifest, me)
 	}
 	if err := s.Err(); err != nil {
-		return Manifest{}, err
+		return Manifest{}, fmt.Errorf("Error around line %d: %v", nLine, err)
 	}
 	return manifest, nil
 }

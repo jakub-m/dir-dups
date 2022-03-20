@@ -47,14 +47,14 @@ func TestHash(t *testing.T) {
 	// printNode(t, "node", node)
 
 	assert.Equal(t,
-		node.Children["a1"].Hash,
-		node.Children["a1"].Children["b1"].Hash)
+		node.Children[""].Children["a1"].Hash,
+		node.Children[""].Children["a1"].Children["b1"].Hash)
 	assert.NotEqual(t,
-		node.Children["a1"].Children["b1"].Children["c1"].Hash,
-		node.Children["a1"].Children["b1"].Children["c2"].Hash)
+		node.Children[""].Children["a1"].Children["b1"].Children["c1"].Hash,
+		node.Children[""].Children["a1"].Children["b1"].Children["c2"].Hash)
 	assert.Equal(t,
-		node.Children["a1"].Children["b1"].Children["c1"].Hash,
-		node.Children["a2"].Children["b2"].Children["c1"].Hash)
+		node.Children[""].Children["a1"].Children["b1"].Children["c1"].Hash,
+		node.Children[""].Children["a2"].Children["b2"].Children["c1"].Hash)
 }
 
 func TestFindSimilarOneFileInDifferentFolder(t *testing.T) {
@@ -88,8 +88,14 @@ func TestLoadLines(t *testing.T) {
 	assert.Equal(t, "", root.Name)
 	assert.Equal(t, 3, root.Size)
 	assert.Equal(t, 2, root.FileCount)
+	assert.Equal(t, true, root.IsRoot)
 
-	foo := root.Children["foo"]
+	fileRoot := root.Children[""]
+	assert.Equal(t, "", fileRoot.Name)
+	assert.Equal(t, 3, fileRoot.Size)
+	assert.Equal(t, 2, fileRoot.FileCount)
+
+	foo := fileRoot.Children["foo"]
 	assert.Equal(t, "foo", foo.Name)
 	assert.Equal(t, 3, foo.Size)
 	assert.Equal(t, 2, foo.FileCount)

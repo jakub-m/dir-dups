@@ -170,9 +170,6 @@ func LoadNodesFromFileListOpts(data io.Reader, opts LoadOpts) (*Node, error) {
 				newChild.Hash = calculateHashFromString(parsed.hash)
 				n.Children[p] = newChild
 			} else {
-				if p == "" {
-					continue
-				}
 				if ch, ok := n.Children[p]; ok {
 					n = ch
 				} else {
@@ -295,6 +292,8 @@ func parseLine(line string) (parsed, error) {
 	line = strings.Trim(line, "\n")
 	parts := strings.Split(line, "\t")
 	parsed := parsed{}
+	// A line is in a form: /path/to/file <tab> size <tab> hash
+	// The path does not need to start with slash.
 	if len(parts) != 3 {
 		return parsed, fmt.Errorf("bad line: %d parts, `%v`", len(parts), line)
 	}

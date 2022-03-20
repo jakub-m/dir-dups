@@ -7,7 +7,7 @@ goanalyze=cli/analyze/main.go
 bincleanup=bin/cleanup
 gocleanup=cli/cleanup/main.go
 
-gofiles=$(shell find . -name \*.go)
+gofiles=$(shell find . -name \*.go -or -name \*.gotemplate)
 
 default: test build
 build: $(binlist) $(binanalyze) $(bincleanup)

@@ -129,11 +129,11 @@ func transformManifestToBash(opts options) {
 		}
 	})
 
-	getPath := func(s ManifestEntry) string { return s.Path }
-	isMove := func(s ManifestEntry) bool { return s.Operation == Move }
+	getTargetPath := func(s DataEntry) string { return s.TargetPath }
+	isMove := func(s DataEntry) bool { return s.Operation == Move }
 	err = tmpl.Execute(os.Stdout, Data{
 		Entries:     dataEntries,
-		TargetPaths: coll.Uniq(coll.TransformSlice(coll.FilterSlice(manifest, isMove), getPath)),
+		TargetPaths: coll.Uniq(coll.TransformSlice(coll.FilterSlice(dataEntries, isMove), getTargetPath)),
 	})
 	if err != nil {
 		log.Fatalf("template error: %v", err)

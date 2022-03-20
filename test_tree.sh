@@ -7,7 +7,7 @@ cat $0
 
 make build
 
-rm -rf tmp
+rm -rf tmp trash
 mkdir -p tmp
 mkdir -p tmp/a
 echo "x" > tmp/a/x
@@ -16,8 +16,8 @@ cp -r tmp/a tmp/b
 cp -r tmp/a tmp/c
 
 
-input_path=./tmp
-#input_path=$PWD/tmp
+#input_path=./tmp
+input_path=$PWD/tmp
 
 list=$(./bin/listfiles ${input_path})
 echo "--- list ---"
@@ -34,6 +34,6 @@ move	1fb9e3ff04b12d5f	tmp/c/
 move	1fb9e3ff04b12d5f	tmp/a/
 EOF
 
-bash tmp_clean.bash
+bash -x tmp_clean.bash
 
 # ========================================================

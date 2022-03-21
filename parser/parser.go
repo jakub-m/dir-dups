@@ -9,7 +9,8 @@ import (
 )
 
 type Expression interface {
-	Parse(Cursor) (AstNode, Cursor, error)
+	Parse(Cursor) (AstNode, Cursor, *ParseError)
+	String() string
 }
 
 type Cursor struct {
@@ -37,7 +38,7 @@ type sequenceExpr struct {
 	expressions []Expression
 }
 
-func (e sequenceExpr) Parse(cursor Cursor) (AstNode, Cursor, error) {
+func (e sequenceExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 	nodes := []AstNode{}
 	for _, expr := range e.expressions {
 		ast, nextCur, err := expr.Parse(cursor)
@@ -48,6 +49,11 @@ func (e sequenceExpr) Parse(cursor Cursor) (AstNode, Cursor, error) {
 		cursor = nextCur
 	}
 	return &SequenceAstNode{nodes}, cursor, nil
+}
+
+func (e sequenceExpr) String() string {
+	es := coll.TransformSlice(e.expressions, func(e Expression) string { return e.String() })
+	return strings.Join(es, " ")
 }
 
 type SequenceAstNode struct {
@@ -62,12 +68,16 @@ type optionalExpression struct {
 	expr Expression
 }
 
-func (e optionalExpression) Parse(cursor Cursor) (AstNode, Cursor, error) {
+func (e optionalExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 	if ast, newCur, err := e.expr.Parse(cursor); err == nil {
 		return ast, newCur, err
 	} else {
 		return NilAstNode, cursor, nil
 	}
+}
+
+func (e optionalExpression) String() string {
+	return fmt.Sprintf("(%s)?", e.expr.String())
 }
 
 var NilAstNode = &EmptyAstNode{}
@@ -87,7 +97,7 @@ type LiteralAstNode struct {
 	Value string
 }
 
-func (e literalExpression) Parse(cursor Cursor) (AstNode, Cursor, error) {
+func (e literalExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 	inputAtPosition := cursor.inputAtPosition()
 	if strings.HasPrefix(inputAtPosition, e.value) {
 		ast := LiteralAstNode{e.value}
@@ -95,6 +105,10 @@ func (e literalExpression) Parse(cursor Cursor) (AstNode, Cursor, error) {
 		return &ast, cur, nil
 	}
 	return nil, cursor, NewParseError(cursor, "expected \"%s\"", e.value)
+}
+
+func (e literalExpression) String() string {
+	return e.value
 }
 
 func Or(expressions ...Expression) Expression {
@@ -105,7 +119,7 @@ type oneOfExpr struct {
 	expressions []Expression
 }
 
-func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, error) {
+func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 	type result struct {
 		expr   Expression
 		ast    AstNode
@@ -134,7 +148,14 @@ func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, error) {
 	return results[0].ast, results[0].cursor, nil
 }
 
+func (e oneOfExpr) String() string {
+	es := coll.TransformSlice(e.expressions, func(e Expression) string { return e.String() })
+	return strings.Join(es, "|")
+}
+
 var QuotedString = RegexExpression(`"(?:[^"\\]|\\.)*"`)
+
+var WhiteSpace = RegexExpression(`[ \n\t]+`)
 
 func RegexExpression(pattern string) Expression {
 	return regexExpression{regexp.MustCompile(pattern)}
@@ -144,7 +165,7 @@ type regexExpression struct {
 	re *regexp.Regexp
 }
 
-func (e regexExpression) Parse(cursor Cursor) (AstNode, Cursor, error) {
+func (e regexExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 	in := cursor.inputAtPosition()
 	loc := e.re.FindStringIndex(in)
 	if loc == nil || loc[0] != 0 {
@@ -153,12 +174,16 @@ func (e regexExpression) Parse(cursor Cursor) (AstNode, Cursor, error) {
 	return &RegexAstNode{in[loc[0]:loc[1]]}, cursor.movePos(loc[1] - loc[0]), nil
 }
 
+func (e regexExpression) String() string {
+	return e.re.String()
+}
+
 type RegexAstNode struct {
 	match string
 }
 
-func NewParseError(cur Cursor, format string, args ...any) error {
-	return ParseError{
+func NewParseError(cur Cursor, format string, args ...any) *ParseError {
+	return &ParseError{
 		Cursor:  cur,
 		Message: fmt.Sprintf(format, args...),
 	}

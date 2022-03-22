@@ -174,6 +174,7 @@ func (t Seq) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 
 func (t Seq) String() string {
 	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
+	ts = coll.FilterSlice(ts, func(s string) bool { return s != "" })
 	return strings.Join(ts, " ")
 }
 
@@ -243,6 +244,13 @@ func (t Ref) String() string {
 	return "..."
 }
 
+func (t *Ref) Set(tok Tokenizer) {
+	if tok == nil {
+		panic("must not pass nil to Set")
+	}
+	t.Tokenizer = tok
+}
+
 var _ Tokenizer = (*Ref)(nil)
 
 func QuotedString(name string, evaluator Evaluator) Tokenizer {
@@ -259,7 +267,7 @@ var WhiteSpace = whiteSpace()
 func whiteSpace() Tokenizer {
 	m := regexp.MustCompile(`[ \t]+`)
 	return Regex{
-		Name:      "whitespace",
+		Name:      "",
 		Evaluator: NilEvaluator,
 		Matcher:   m,
 	}

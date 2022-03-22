@@ -32,18 +32,40 @@ func getParser() Parser {
 
 	matchExpr := Seq{
 		Tokenizers: []Tokenizer{
-			QuotedString("part of path", NilEvaluator),
+			QuotedString("part_of_path", NilEvaluator),
 			// 	Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
 		},
 		Evaluator: NilMultiEvaluator,
 	}
 
+	literalAnd := Literal{
+		Value:     "and",
+		Name:      "and",
+		Evaluator: NilEvaluator,
+	}
+
+	_ = literalAnd
+
+	conditionalExprRef := Ref{}
+
 	conditionalExpr := OneOf{
 		Tokenizers: []Tokenizer{
 			matchExpr,
-			// 	Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
+			Seq{
+				Tokenizers: []Tokenizer{
+					matchExpr,
+					// WhiteSpace,
+					// literalAnd,
+					// WhiteSpace,
+					// matchExpr,
+					// conditionalExprRef,
+				},
+				Evaluator: NilMultiEvaluator,
+			},
 		},
 	}
+
+	conditionalExprRef.Set(conditionalExpr)
 
 	literalIf := Literal{
 		Value:     "if",
@@ -63,9 +85,7 @@ func getParser() Parser {
 	instructionTokenizer := Seq{
 		Tokenizers: []Tokenizer{
 			optionalStartingIf,
-			conditionalExpr,
-			// 	Optional(Sequence(Literal("if"), WhiteSpace)),
-			// 	conditionExpr,
+			//conditionalExpr,
 			// 	//WhiteSpace,
 			// 	//Literal("then"),
 		},
@@ -78,9 +98,13 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar"`
+	in := `if `
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
-	assert.Nil(t, err)
+	errString := ""
+	if err != nil {
+		errString = err.Cursor().AtPos()
+	}
+	assert.Nil(t, err, errString)
 	// assert.Equal(t, len(in.Input), cursor.Position)
 }

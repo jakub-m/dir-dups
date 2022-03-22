@@ -4,6 +4,7 @@ package parser
 import (
 	"fmt"
 	coll "greasytoad/collections"
+	"regexp"
 	"strings"
 )
 
@@ -25,8 +26,6 @@ type Tokenizer interface {
 	Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor)
 	String() string
 }
-
-type AstNode any
 
 type Cursor struct {
 	Input    string
@@ -178,97 +177,62 @@ func (t Seq) String() string {
 	return strings.Join(ts, " ")
 }
 
-// func Optional(expr Expression) Expression {
-// 	return optionalExpression{expr}
-// }
+var _ Tokenizer = (*Seq)(nil)
 
-// type optionalExpression struct {
-// 	expr Expression
-// }
+type Optional struct {
+	Tokenizer Tokenizer
+}
 
-// func (e optionalExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	if ast, newCur, err := e.expr.Parse(cursor); err == nil {
-// 		return ast, newCur, err
-// 	} else {
-// 		return NilAstNode, cursor, nil
-// 	}
-// }
+func (t Optional) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	if nextCur, ast, err := t.Tokenizer.Tokenize(cur); err == nil {
+		return nextCur, ast, nil
+	} else {
+		return cur, NilAstNode, nil
+	}
+}
 
-// func (e optionalExpression) String() string {
-// 	return fmt.Sprintf("(%s)?", e.expr.String())
-// }
+func (t Optional) String() string {
+	return t.String() + "?"
+}
 
-// var NilAstNode = &EmptyAstNode{}
+var _ Tokenizer = (*Optional)(nil)
 
-// type EmptyAstNode struct {
-// }
+var NilAstNode = &nilAstNode{}
 
-// func Literal(value string) Expression {
-// 	return literalExpression{value: value}
-// }
+type nilAstNode struct{}
 
-// type literalExpression struct {
-// 	value string
-// }
+var _ AstNode = (*nilAstNode)(nil)
 
-// type LiteralAstNode struct {
-// 	Value string
-// }
+type AstNode any
 
-// func (e literalExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	inputAtPosition := cursor.inputAtPosition()
-// 	if strings.HasPrefix(inputAtPosition, e.value) {
-// 		ast := LiteralAstNode{e.value}
-// 		cur := cursor.movePos(len(e.value))
-// 		return &ast, cur, nil
-// 	}
-// 	return nil, cursor, NewParseError(cursor, "expected \"%s\"", e.value)
-// }
+type Regex struct {
+	Matcher   *regexp.Regexp
+	Name      string
+	Evaluator Evaluator
+}
 
-// func (e literalExpression) String() string {
-// 	return e.value
-// }
+func (t Regex) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	in := cur.AtPos()
+	loc := t.Matcher.FindStringIndex(in)
+	if loc == nil || loc[0] != 0 {
+		return cur, nil, NewErrorWithCursor(cur, "expected regex %v", t.Matcher)
+	}
+	ast, err := t.Evaluator.Evaluate(in[loc[0]:loc[1]])
+	if err != nil {
+		return cur, nil, NewErrorWithCursor(cur, err.Error())
+	}
+	return cur.Advance(loc[1] - loc[0]), ast, nil
+}
 
-// func Or(expressions ...Expression) Expression {
-// 	return oneOfExpr{expressions}
-// }
+func (t Regex) String() string {
+	return t.Name
+}
 
-// type oneOfExpr struct {
-// 	expressions []Expression
-// }
-
-// func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// }
-
-// func (e oneOfExpr) String() string {
-// 	es := coll.TransformSlice(e.expressions, func(e Expression) string { return e.String() })
-// 	return strings.Join(es, "|")
-// }
+var _ Tokenizer = (*Regex)(nil)
 
 // var QuotedString = RegexExpression(`"(?:[^"\\]|\\.)*"`)
 
 // var WhiteSpace = RegexExpression(`[ \n\t]+`)
-
-// func RegexExpression(pattern string) Expression {
-// 	return regexExpression{regexp.MustCompile(pattern)}
-// }
-
-// type regexExpression struct {
-// 	re *regexp.Regexp
-// }
-
-// func (e regexExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	in := cursor.inputAtPosition()
-// 	loc := e.re.FindStringIndex(in)
-// 	if loc == nil || loc[0] != 0 {
-// 		return nil, cursor, NewParseError(cursor, "expected regex %v", e.re)
-// 	}
-// 	return &RegexAstNode{in[loc[0]:loc[1]]}, cursor.movePos(loc[1] - loc[0]), nil
-// }
-
-// func (e regexExpression) String() string {
-// 	return e.re.String()
-// }
 
 // type RefExpression struct {
 // 	ref Expression
@@ -284,8 +248,4 @@ func (t Seq) String() string {
 
 // func (e *RefExpression) Set(expr Expression) {
 // 	e.ref = expr
-// }
-
-// type RegexAstNode struct {
-// 	match string
 // }

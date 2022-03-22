@@ -51,17 +51,17 @@ func getParser() Parser {
 	conditionalExpr := OneOf{
 		Tokenizers: []Tokenizer{
 			matchExpr,
-			Seq{
-				Tokenizers: []Tokenizer{
-					matchExpr,
-					// WhiteSpace,
-					// literalAnd,
-					// WhiteSpace,
-					// matchExpr,
-					// conditionalExprRef,
-				},
-				Evaluator: NilMultiEvaluator,
-			},
+			// Seq{
+			// 	Tokenizers: []Tokenizer{
+			// 		matchExpr,
+			// 		// WhiteSpace,
+			// 		// literalAnd,
+			// 		// WhiteSpace,
+			// 		// matchExpr,
+			// 		// conditionalExprRef,
+			// 	},
+			// 	Evaluator: NilMultiEvaluator,
+			// },
 		},
 	}
 
@@ -85,7 +85,7 @@ func getParser() Parser {
 	instructionTokenizer := Seq{
 		Tokenizers: []Tokenizer{
 			optionalStartingIf,
-			//conditionalExpr,
+			conditionalExpr,
 			// 	//WhiteSpace,
 			// 	//Literal("then"),
 		},
@@ -98,7 +98,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if `
+	in := `if "foo"`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

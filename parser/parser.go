@@ -77,6 +77,10 @@ type Evaluator interface {
 	Evaluate(lexeme string) (AstNode, error)
 }
 
+type MultiEvaluator interface {
+	Evaluate(lexeme []string) (AstNode, error)
+}
+
 // Below are the concrete tokenizers
 
 type Literal struct {
@@ -147,85 +151,32 @@ func (t OneOf) String() string {
 
 var _ Tokenizer = (*OneOf)(nil)
 
-// var _ Tokenizer = (*OneOf)(nil)
+type Seq struct {
+	Tokenizers []Tokenizer
+	Evaluator  func([]AstNode) (AstNode, error)
+}
 
-// func (e ParseError) Error() string {
-// 	return e.Message
-// }
+func (t Seq) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	nodes := []AstNode{}
+	for _, tok := range t.Tokenizers {
+		nextCur, ast, err := tok.Tokenize(cur)
+		if err != nil {
+			return cur, nil, err
+		}
+		nodes = append(nodes, ast)
+		cur = nextCur
+	}
+	ast, err := t.Evaluator(nodes)
+	if err != nil {
+		return cur, nil, NewErrorWithCursor(cur, err.Error())
+	}
+	return cur, ast, nil
+}
 
-// import (
-// 	"fmt"
-// 	coll "greasytoad/collections"
-// 	"regexp"
-// 	"strings"
-// )
-
-// type Tokenizer struct {
-// 	// lexer takes a text and consumes some of this text characters
-// 	lexer lexer
-// 	// name is specific to the constructed dsl.
-// 	name string
-// 	// convert output of the lexer into a meaningful token. e.g. from string to integer.
-// 	evaluator evaluator
-// }
-// func (t Tokenizer) Parse(input string) (AstNode, *ParseError) {
-// }
-
-// type Lexer interface {
-// 	// Consume consumes cursor, returns a new cursor, the matching string (lexeme), and optionally an error.
-// 	Consume(Cursor) (Cursor, string, *ParseError)
-// }
-
-// type Evaluator func(lexeme string) (Token, *ParseError)
-
-// type Token any
-
-// // ---------
-
-// type Expression interface {
-// 	Parse(Cursor) (AstNode, Cursor, *ParseError)
-// 	String() string
-// }
-
-// type Cursor struct {
-// 	Input    string
-// 	Position int
-// }
-
-// func (c Cursor) movePos(shift int) Cursor {
-// 	c.Position += shift
-// 	return c
-// }
-
-// func Sequence(expressions ...Expression) Expression {
-// 	return sequenceExpr{expressions}
-// }
-
-// type sequenceExpr struct {
-// 	expressions []Expression
-// }
-
-// func (e sequenceExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	nodes := []AstNode{}
-// 	for _, expr := range e.expressions {
-// 		ast, nextCur, err := expr.Parse(cursor)
-// 		if err != nil {
-// 			return nil, cursor, err
-// 		}
-// 		nodes = append(nodes, ast)
-// 		cursor = nextCur
-// 	}
-// 	return &SequenceAstNode{nodes}, cursor, nil
-// }
-
-// func (e sequenceExpr) String() string {
-// 	es := coll.TransformSlice(e.expressions, func(e Expression) string { return e.String() })
-// 	return strings.Join(es, " ")
-// }
-
-// type SequenceAstNode struct {
-// 	Nodes []AstNode
-// }
+func (t Seq) String() string {
+	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
+	return strings.Join(ts, " ")
+}
 
 // func Optional(expr Expression) Expression {
 // 	return optionalExpression{expr}

@@ -1,49 +1,153 @@
 // General purpose parser. Consider moving it to a separate package.
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	coll "greasytoad/collections"
+	"strings"
+)
 
 // Parser takes a text and retuns a meaningful abstract syntaxt tree
 type Parser struct {
 	Tokenizer Tokenizer
 }
 
-func (p Parser) ParseString(s string) (*AstNode, *ParseError) {
+func (p Parser) ParseString(s string) (AstNode, ErrorWithCursor) {
 	startCur := Cursor{s, 0}
 	cur, node, err := p.Tokenizer.Tokenize(startCur)
-	if !cur.AtEnd() {
-		return nil, NewParseError(cur, "did not parse whole input")
+	if !cur.IsEnd() {
+		return nil, NewErrorWithCursor(cur, "did not parse whole input")
 	}
 	return node, err
 }
 
-type AstNode interface {
+type Tokenizer interface {
+	Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor)
+	String() string
 }
 
-type Tokenizer interface {
-	Tokenize(cur Cursor) (Cursor, *AstNode, *ParseError)
-}
+type AstNode any
 
 type Cursor struct {
 	Input    string
 	Position int
 }
 
-func (c Cursor) AtEnd() bool {
+func (c Cursor) IsEnd() bool {
 	return len(c.Input) == c.Position
 }
 
-type ParseError struct {
-	Cursor  Cursor
-	Message string
+func (c Cursor) AtPos() string {
+	return c.Input[c.Position:]
 }
 
-func NewParseError(cur Cursor, format string, args ...any) *ParseError {
-	return &ParseError{
-		Cursor:  cur,
-		Message: fmt.Sprintf(format, args...),
+func (c Cursor) Advance(n int) Cursor {
+	c.Position += n
+	if c.Position > len(c.Input) {
+		c.Position = len(c.Input)
 	}
+	return c
 }
+
+type ErrorWithCursor interface {
+	Cursor() Cursor
+	Error() string
+}
+
+var _ error = (ErrorWithCursor)(nil)
+
+func NewErrorWithCursor(cur Cursor, format string, args ...any) ErrorWithCursor {
+	return errorWithCursor{cur, fmt.Sprintf(format, args...)}
+}
+
+type errorWithCursor struct {
+	cur     Cursor
+	message string
+}
+
+func (e errorWithCursor) Cursor() Cursor {
+	return e.cur
+}
+
+func (e errorWithCursor) Error() string {
+	return e.message
+}
+
+type Evaluator interface {
+	Evaluate(lexeme string) (AstNode, error)
+}
+
+// Below are the concrete tokenizers
+
+type Literal struct {
+	// Value is the exact value to match
+	Value     string
+	Evaluator Evaluator
+	// Name is a displayable, context specific name
+	Name string
+}
+
+func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	inputAtPosition := cur.AtPos()
+	if strings.HasPrefix(inputAtPosition, t.Value) {
+		n := len(t.Value)
+		lexeme := inputAtPosition[:n]
+		ast, err := t.Evaluator.Evaluate(lexeme)
+		if err != nil {
+			return cur, nil, NewErrorWithCursor(cur, err.Error())
+		}
+		return cur.Advance(n), ast, nil
+	}
+	return cur, nil, NewErrorWithCursor(cur, "expected \"%s\"", t.String())
+}
+
+func (t Literal) String() string {
+	return t.Name
+}
+
+var _ Tokenizer = (*Literal)(nil)
+
+type OneOf struct {
+	Tokenizers []Tokenizer
+}
+
+func (t OneOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	type result struct {
+		tok    Tokenizer
+		ast    AstNode
+		cursor Cursor
+	}
+	results := []result{}
+	for _, tok := range t.Tokenizers {
+		nextCur, ast, err := tok.Tokenize(cur)
+		if err != nil {
+			continue
+		}
+		results = append(results, result{
+			tok:    tok,
+			ast:    ast,
+			cursor: nextCur,
+		})
+	}
+	if len(results) == 0 {
+		parserStrings := coll.TransformSlice(t.Tokenizers, func(tok Tokenizer) string { return tok.String() })
+		return cur, nil, NewErrorWithCursor(cur, "failed to parse any of: %s", strings.Join(parserStrings, ", "))
+	}
+	if len(results) > 1 {
+		resultStrings := coll.TransformSlice(results, func(r result) string { return r.tok.String() })
+		return cur, nil, NewErrorWithCursor(cur, "more than one match: %s", strings.Join(resultStrings, ", "))
+	}
+	return results[0].cursor, results[0].ast, nil
+}
+
+func (t OneOf) String() string {
+	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
+	return strings.Join(ts, " or ")
+}
+
+var _ Tokenizer = (*OneOf)(nil)
+
+// var _ Tokenizer = (*OneOf)(nil)
 
 // func (e ParseError) Error() string {
 // 	return e.Message
@@ -57,14 +161,13 @@ func NewParseError(cur Cursor, format string, args ...any) *ParseError {
 // )
 
 // type Tokenizer struct {
-// 	// Lexer takes a text and consumes some of this text characters
-// 	Lexer Lexer
-// 	// Name is specific to the constructed DSL.
-// 	Name string
-// 	// Convert output of the Lexer into a meaningful token. E.g. from string to integer.
-// 	Evaluator Evaluator
+// 	// lexer takes a text and consumes some of this text characters
+// 	lexer lexer
+// 	// name is specific to the constructed dsl.
+// 	name string
+// 	// convert output of the lexer into a meaningful token. e.g. from string to integer.
+// 	evaluator evaluator
 // }
-
 // func (t Tokenizer) Parse(input string) (AstNode, *ParseError) {
 // }
 
@@ -87,10 +190,6 @@ func NewParseError(cur Cursor, format string, args ...any) *ParseError {
 // type Cursor struct {
 // 	Input    string
 // 	Position int
-// }
-
-// func (c Cursor) inputAtPosition() string {
-// 	return c.Input[c.Position:]
 // }
 
 // func (c Cursor) movePos(shift int) Cursor {
@@ -188,32 +287,6 @@ func NewParseError(cur Cursor, format string, args ...any) *ParseError {
 // }
 
 // func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	type result struct {
-// 		expr   Expression
-// 		ast    AstNode
-// 		cursor Cursor
-// 	}
-// 	results := []result{}
-// 	for _, expr := range e.expressions {
-// 		ast, nextCur, err := expr.Parse(cursor)
-// 		if err != nil {
-// 			continue
-// 		}
-// 		results = append(results, result{
-// 			expr:   expr,
-// 			ast:    ast,
-// 			cursor: nextCur,
-// 		})
-// 	}
-// 	if len(results) == 0 {
-// 		parserStrings := coll.TransformSlice(e.expressions, func(e Expression) string { return fmt.Sprint(e) })
-// 		return NilAstNode, cursor, NewParseError(cursor, "failed to parse any of: %s", strings.Join(parserStrings, ", "))
-// 	}
-// 	if len(results) > 1 {
-// 		resultStrings := coll.TransformSlice(results, func(r result) string { return r.expr.String() })
-// 		return NilAstNode, cursor, NewParseError(cursor, "more than one match: %s", strings.Join(resultStrings, ", "))
-// 	}
-// 	return results[0].ast, results[0].cursor, nil
 // }
 
 // func (e oneOfExpr) String() string {

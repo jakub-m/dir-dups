@@ -7,38 +7,44 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getParser() Expression {
+func getParser() Tokenizer {
 
 	// if "foo" and "bar" as x then keep x
 
-	identifier := RegexExpression(`[a-zA-Z][a-zA-Z_0-9]+`)
+	// identifier := RegexExpression(`[a-zA-Z][a-zA-Z_0-9]+`)
 
-	matchExpr := Sequence(
-		QuotedString,
-		Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
+	// path := Tokenizer{
+	// 	Lexer: QuotedString,
+	// 	Name: "part of path"
+	// 	Evaluator: func(lexeme string) {return PathToken{lexem}}
+	// }{}
 
-	refExpression := &RefExpression{}
-	conditionExpr := Or(
-		matchExpr,
-		Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
-	)
-	refExpression.Set(conditionExpr)
+	// matchExpr := Sequence(
+	// 	QuotedString,
+	// 	Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
 
-	_ = Or(Literal("move"), Literal("keep"))
-
-	// line := Sequence(
-	// Optional(Literal("if")),
-	// conditionExpr,
-	// Literal("then"),
-	// actionExpr,
+	// refExpression := &RefExpression{}
+	// conditionExpr := Or(
+	// 	matchExpr,
+	// 	Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
 	// )
+	// refExpression.Set(conditionExpr)
 
-	return Sequence(
-		Optional(Sequence(Literal("if"), WhiteSpace)),
-		conditionExpr,
-		//WhiteSpace,
-		//Literal("then"),
-	)
+	// _ = Or(Literal("move"), Literal("keep"))
+
+	// // line := Sequence(
+	// // Optional(Literal("if")),
+	// // conditionExpr,
+	// // Literal("then"),
+	// // actionExpr,
+	// // )
+
+	// return Sequence(
+	// 	Optional(Sequence(Literal("if"), WhiteSpace)),
+	// 	conditionExpr,
+	// 	//WhiteSpace,
+	// 	//Literal("then"),
+	// )
 }
 
 func TestParse(t *testing.T) {

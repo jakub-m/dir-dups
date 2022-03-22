@@ -254,11 +254,26 @@ func QuotedString(name string, evaluator Evaluator) Tokenizer {
 	}
 }
 
-func WhiteSpace(name string, evaluator Evaluator) Tokenizer {
-	m := regexp.MustCompile(`[ \n\t]+`)
+var WhiteSpace = whiteSpace()
+
+func whiteSpace() Tokenizer {
+	m := regexp.MustCompile(`[ \t]+`)
 	return Regex{
-		Name:      name,
-		Evaluator: evaluator,
+		Name:      "whitespace",
+		Evaluator: NilEvaluator,
 		Matcher:   m,
 	}
+}
+
+var NilEvaluator = nilEvaluator{}
+
+type nilEvaluator struct {
+}
+
+func (e nilEvaluator) Evaluate(lexeme string) (AstNode, error) {
+	return NilAstNode, nil
+}
+
+func NilMultiEvaluator(as []AstNode) (AstNode, error) {
+	return NilAstNode, nil
 }

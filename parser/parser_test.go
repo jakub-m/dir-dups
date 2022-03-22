@@ -1,13 +1,12 @@
 package parser
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func getParser() Tokenizer {
+func getParser() Parser {
 
 	// if "foo" and "bar" as x then keep x
 
@@ -45,24 +44,38 @@ func getParser() Tokenizer {
 	// 	//WhiteSpace,
 	// 	//Literal("then"),
 	// )
+
+	literalIf := Literal{
+		Value:     "if",
+		Name:      "if",
+		Evaluator: NilEvaluator,
+	}
+
+	optionalStartingIf := Optional{
+		Seq{
+			Tokenizers: []Tokenizer{
+				literalIf, WhiteSpace,
+			},
+			Evaluator: NilMultiEvaluator,
+		},
+	}
+
+	instructionTokenizer := Seq{
+		Tokenizers: []Tokenizer{
+			optionalStartingIf,
+		},
+		Evaluator: NilMultiEvaluator,
+	}
+
+	return Parser{instructionTokenizer}
 }
 
 func TestParse(t *testing.T) {
 	p := getParser()
-	in := Cursor{
-		Input:    `if "foo" and "bar" as x then keep x`,
-		Position: 0,
-	}
-	root, cursor, err := p.Parse(in)
+	//in := `if "foo" and "bar" as x then keep x`
+	in := `if `
+	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
-	assert.Nil(t, err, fmt.Sprintf("|%s|", formatParseError(err)))
-	_ = cursor
+	assert.Nil(t, err)
 	// assert.Equal(t, len(in.Input), cursor.Position)
-}
-
-func formatParseError(err *ParseError) string {
-	if err == nil {
-		return ""
-	}
-	return err.Cursor.inputAtPosition()
 }

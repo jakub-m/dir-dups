@@ -51,17 +51,17 @@ func getParser() Parser {
 	conditionalExpr := OneOf{
 		Tokenizers: []Tokenizer{
 			matchExpr,
-			// Seq{
-			// 	Tokenizers: []Tokenizer{
-			// 		matchExpr,
-			// 		// WhiteSpace,
-			// 		// literalAnd,
-			// 		// WhiteSpace,
-			// 		// matchExpr,
-			// 		// conditionalExprRef,
-			// 	},
-			// 	Evaluator: NilMultiEvaluator,
-			// },
+			Seq{
+				Tokenizers: []Tokenizer{
+					matchExpr,
+					WhiteSpace,
+					// literalAnd,
+					// WhiteSpace,
+					// matchExpr,
+					// conditionalExprRef,
+				},
+				Evaluator: NilMultiEvaluator,
+			},
 		},
 	}
 

@@ -18,15 +18,7 @@ func getParser() Parser {
 	// 	Evaluator: func(lexeme string) {return PathToken{lexem}}
 	// }{}
 
-	// matchExpr := Sequence(
-	// 	QuotedString,
-	// 	Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
-
 	// refExpression := &RefExpression{}
-	// conditionExpr := Or(
-	// 	matchExpr,
-	// 	Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
-	// )
 	// refExpression.Set(conditionExpr)
 
 	// _ = Or(Literal("move"), Literal("keep"))
@@ -38,12 +30,20 @@ func getParser() Parser {
 	// // actionExpr,
 	// // )
 
-	// return Sequence(
-	// 	Optional(Sequence(Literal("if"), WhiteSpace)),
-	// 	conditionExpr,
-	// 	//WhiteSpace,
-	// 	//Literal("then"),
-	// )
+	matchExpr := Seq{
+		Tokenizers: []Tokenizer{
+			QuotedString("part of path", NilEvaluator),
+			// 	Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
+		},
+		Evaluator: NilMultiEvaluator,
+	}
+
+	conditionalExpr := OneOf{
+		Tokenizers: []Tokenizer{
+			matchExpr,
+			// 	Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
+		},
+	}
 
 	literalIf := Literal{
 		Value:     "if",
@@ -63,6 +63,11 @@ func getParser() Parser {
 	instructionTokenizer := Seq{
 		Tokenizers: []Tokenizer{
 			optionalStartingIf,
+			conditionalExpr,
+			// 	Optional(Sequence(Literal("if"), WhiteSpace)),
+			// 	conditionExpr,
+			// 	//WhiteSpace,
+			// 	//Literal("then"),
 		},
 		Evaluator: NilMultiEvaluator,
 	}
@@ -73,7 +78,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if `
+	in := `if "foo"`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	assert.Nil(t, err)

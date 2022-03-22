@@ -78,7 +78,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo"`
+	in := `if "foo" and "bar"`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	assert.Nil(t, err)

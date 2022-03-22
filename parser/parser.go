@@ -142,7 +142,7 @@ func (e oneOfExpr) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 		return NilAstNode, cursor, NewParseError(cursor, "failed to parse any of: %s", strings.Join(parserStrings, ", "))
 	}
 	if len(results) > 1 {
-		resultStrings := coll.TransformSlice(results, func(e result) string { return fmt.Sprint(e) })
+		resultStrings := coll.TransformSlice(results, func(r result) string { return r.expr.String() })
 		return NilAstNode, cursor, NewParseError(cursor, "more than one match: %s", strings.Join(resultStrings, ", "))
 	}
 	return results[0].ast, results[0].cursor, nil
@@ -176,6 +176,22 @@ func (e regexExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
 
 func (e regexExpression) String() string {
 	return e.re.String()
+}
+
+type RefExpression struct {
+	ref Expression
+}
+
+func (e RefExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
+	return e.ref.Parse(cursor)
+}
+
+func (e RefExpression) String() string {
+	return fmt.Sprint("...")
+}
+
+func (e *RefExpression) Set(expr Expression) {
+	e.ref = expr
 }
 
 type RegexAstNode struct {

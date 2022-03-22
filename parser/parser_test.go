@@ -17,11 +17,12 @@ func getParser() Expression {
 		QuotedString,
 		Optional(Sequence(WhiteSpace, Literal("as"), WhiteSpace, identifier)))
 
-	var conditionExpr Expression
-	conditionExpr = Or(
+	refExpression := &RefExpression{}
+	conditionExpr := Or(
 		matchExpr,
-		Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, conditionExpr),
+		Sequence(matchExpr, WhiteSpace, Literal("and"), WhiteSpace, refExpression),
 	)
+	refExpression.Set(conditionExpr)
 
 	_ = Or(Literal("move"), Literal("keep"))
 

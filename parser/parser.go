@@ -230,22 +230,35 @@ func (t Regex) String() string {
 
 var _ Tokenizer = (*Regex)(nil)
 
-// var QuotedString = RegexExpression(`"(?:[^"\\]|\\.)*"`)
+// Ref is used for self-referencing, recurrent expressions.
+type Ref struct {
+	Tokenizer Tokenizer
+}
 
-// var WhiteSpace = RegexExpression(`[ \n\t]+`)
+func (t Ref) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	return t.Tokenizer.Tokenize(cur)
+}
 
-// type RefExpression struct {
-// 	ref Expression
-// }
+func (t Ref) String() string {
+	return "..."
+}
 
-// func (e RefExpression) Parse(cursor Cursor) (AstNode, Cursor, *ParseError) {
-// 	return e.ref.Parse(cursor)
-// }
+var _ Tokenizer = (*Ref)(nil)
 
-// func (e RefExpression) String() string {
-// 	return fmt.Sprint("...")
-// }
+func QuotedString(name string, evaluator Evaluator) Tokenizer {
+	m := regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
+	return Regex{
+		Name:      name,
+		Evaluator: evaluator,
+		Matcher:   m,
+	}
+}
 
-// func (e *RefExpression) Set(expr Expression) {
-// 	e.ref = expr
-// }
+func WhiteSpace(name string, evaluator Evaluator) Tokenizer {
+	m := regexp.MustCompile(`[ \n\t]+`)
+	return Regex{
+		Name:      name,
+		Evaluator: evaluator,
+		Matcher:   m,
+	}
+}

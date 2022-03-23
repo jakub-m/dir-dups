@@ -82,25 +82,25 @@ type MultiEvaluator interface {
 
 // Below are the concrete tokenizers
 
-func NewLiteral(value string) *Literal {
-	return &Literal{
+func Literal(value string) *LiteralTokenizer {
+	return &LiteralTokenizer{
 		value:     value,
 		evaluator: NilEvaluator,
 	}
 }
 
-func (l *Literal) WithEvaluator(ev Evaluator) *Literal {
+func (l *LiteralTokenizer) WithEvaluator(ev Evaluator) *LiteralTokenizer {
 	l.evaluator = ev
 	return l
 }
 
-type Literal struct {
+type LiteralTokenizer struct {
 	// value is the exact value to match
 	value     string
 	evaluator Evaluator
 }
 
-func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	inputAtPosition := cur.AtPos()
 	if strings.HasPrefix(inputAtPosition, t.value) {
 		n := len(t.value)
@@ -114,11 +114,11 @@ func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, nil, NewErrorWithCursor(cur, "expected \"%s\"", t.String())
 }
 
-func (t Literal) String() string {
+func (t LiteralTokenizer) String() string {
 	return t.value
 }
 
-var _ Tokenizer = (*Literal)(nil)
+var _ Tokenizer = (*LiteralTokenizer)(nil)
 
 type FirstOf struct {
 	Tokenizers []Tokenizer
@@ -142,11 +142,15 @@ func (t FirstOf) String() string {
 
 var _ Tokenizer = (*FirstOf)(nil)
 
-type OneOf struct {
+func OneOf(tt ...Tokenizer) *OneOfTokenizer {
+	return &OneOfTokenizer{tt}
+}
+
+type OneOfTokenizer struct {
 	Tokenizers []Tokenizer
 }
 
-func (t OneOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t OneOfTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	type result struct {
 		tok    Tokenizer
 		ast    AstNode
@@ -175,12 +179,12 @@ func (t OneOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return results[0].cursor, results[0].ast, nil
 }
 
-func (t OneOf) String() string {
+func (t OneOfTokenizer) String() string {
 	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
 	return strings.Join(ts, " or ")
 }
 
-var _ Tokenizer = (*OneOf)(nil)
+var _ Tokenizer = (*OneOfTokenizer)(nil)
 
 type Seq struct {
 	Tokenizers []Tokenizer

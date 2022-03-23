@@ -46,7 +46,7 @@ func getParser() Parser {
 
 	_ = literalAnd
 
-	conditionExprRef := Ref{}
+	conditionExprRef := &Ref{}
 
 	conditionExpr := FirstOf{
 		Tokenizers: []Tokenizer{
@@ -97,7 +97,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar"`
+	in := `if "foo" and "bar" and "baz"`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

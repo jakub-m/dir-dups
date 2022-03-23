@@ -11,8 +11,6 @@ func getParser() Parser {
 
 	// if "foo" and "bar" as x then keep x
 
-	// identifier := RegexExpression(``)
-
 	// path := Tokenizer{
 	// 	Lexer: QuotedString,
 	// 	Name: "part of path"
@@ -29,7 +27,7 @@ func getParser() Parser {
 	// // )
 
 	identifier := Regex{
-		Matcher:   regexp.MustCompile(`[a-zA-Z][a-zA-Z_0-9]+`),
+		Matcher:   regexp.MustCompile(`[a-zA-Z][a-zA-Z_0-9]*`),
 		Name:      "identifier",
 		Evaluator: NilEvaluator,
 	}
@@ -47,8 +45,8 @@ func getParser() Parser {
 			Tokenizers: []Tokenizer{
 				WhiteSpace,
 				literalAs,
-				// WhiteSpace,
-				// identifier,
+				WhiteSpace,
+				identifier,
 			},
 			Evaluator: NilMultiEvaluator,
 		},
@@ -121,7 +119,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar" as`
+	in := `if "foo" and "bar" as x`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

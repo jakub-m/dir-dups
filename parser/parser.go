@@ -188,19 +188,19 @@ var _ Tokenizer = (*OneOfTokenizer)(nil)
 
 func Seq(tt ...Tokenizer) *SeqTokenizer {
 	return &SeqTokenizer{
-		Tokenizers: tt,
-		Evaluator:  NilMultiEvaluator,
+		tokenizers: tt,
+		evaluator:  NilMultiEvaluator,
 	}
 }
 
 type SeqTokenizer struct {
-	Tokenizers []Tokenizer
-	Evaluator  func([]AstNode) (AstNode, error)
+	tokenizers []Tokenizer
+	evaluator  func([]AstNode) (AstNode, error)
 }
 
 func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	nodes := []AstNode{}
-	for _, tok := range t.Tokenizers {
+	for _, tok := range t.tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
 		if err != nil {
 			return cur, nil, err
@@ -208,7 +208,7 @@ func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 		nodes = append(nodes, ast)
 		cur = nextCur
 	}
-	ast, err := t.Evaluator(nodes)
+	ast, err := t.evaluator(nodes)
 	if err != nil {
 		return cur, nil, NewErrorWithCursor(cur, err.Error())
 	}
@@ -216,30 +216,36 @@ func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 }
 
 func (t SeqTokenizer) String() string {
-	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
+	ts := coll.TransformSlice(t.tokenizers, func(t Tokenizer) string { return t.String() })
 	ts = coll.FilterSlice(ts, func(s string) bool { return s != "" })
 	return strings.Join(ts, " ")
 }
 
 var _ Tokenizer = (*SeqTokenizer)(nil)
 
-type Optional struct {
-	Tokenizer Tokenizer
+func Optional(t Tokenizer) *OptionalTokenizer {
+	return &OptionalTokenizer{
+		tokenizer: t,
+	}
 }
 
-func (t Optional) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
-	if nextCur, ast, err := t.Tokenizer.Tokenize(cur); err == nil {
+type OptionalTokenizer struct {
+	tokenizer Tokenizer
+}
+
+func (t OptionalTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	if nextCur, ast, err := t.tokenizer.Tokenize(cur); err == nil {
 		return nextCur, ast, nil
 	} else {
 		return cur, NilAstNode, nil
 	}
 }
 
-func (t Optional) String() string {
+func (t OptionalTokenizer) String() string {
 	return t.String() + "?"
 }
 
-var _ Tokenizer = (*Optional)(nil)
+var _ Tokenizer = (*OptionalTokenizer)(nil)
 
 var NilAstNode = &nilAstNode{}
 
@@ -251,25 +257,25 @@ type AstNode any
 
 func Regex(pattern string) *RegexTokenizer {
 	return &RegexTokenizer{
-		Matcher:   regexp.MustCompile(pattern),
-		Name:      pattern,
-		Evaluator: NilEvaluator,
+		matcher:   regexp.MustCompile(pattern),
+		name:      pattern,
+		evaluator: NilEvaluator,
 	}
 }
 
 type RegexTokenizer struct {
-	Matcher   *regexp.Regexp
-	Name      string
-	Evaluator Evaluator
+	matcher   *regexp.Regexp
+	name      string
+	evaluator Evaluator
 }
 
 func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	in := cur.AtPos()
-	loc := t.Matcher.FindStringIndex(in)
+	loc := t.matcher.FindStringIndex(in)
 	if loc == nil || loc[0] != 0 {
-		return cur, nil, NewErrorWithCursor(cur, "expected regex %v", t.Matcher)
+		return cur, nil, NewErrorWithCursor(cur, "expected regex %v", t.matcher)
 	}
-	ast, err := t.Evaluator.Evaluate(in[loc[0]:loc[1]])
+	ast, err := t.evaluator.Evaluate(in[loc[0]:loc[1]])
 	if err != nil {
 		return cur, nil, NewErrorWithCursor(cur, err.Error())
 	}
@@ -277,22 +283,18 @@ func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) 
 }
 
 func (t RegexTokenizer) String() string {
-	return t.Name
+	return t.name
 }
 
 var _ Tokenizer = (*RegexTokenizer)(nil)
 
 // Ref is used for self-referencing, recurrent expressions.
 type Ref struct {
-	Tokenizer Tokenizer
-}
-
-type foo struct {
-	bar string
+	tokenizer Tokenizer
 }
 
 func (t Ref) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
-	return t.Tokenizer.Tokenize(cur)
+	return t.tokenizer.Tokenize(cur)
 }
 
 func (t Ref) String() string {
@@ -303,7 +305,7 @@ func (t *Ref) Set(tok Tokenizer) {
 	if tok == nil {
 		panic("must not pass nil to Set")
 	}
-	t.Tokenizer = tok
+	t.tokenizer = tok
 }
 
 var _ Tokenizer = (*Ref)(nil)
@@ -317,9 +319,9 @@ var WhiteSpace = whiteSpace()
 func whiteSpace() Tokenizer {
 	m := regexp.MustCompile(`[ \t]+`)
 	return RegexTokenizer{
-		Name:      "",
-		Evaluator: NilEvaluator,
-		Matcher:   m,
+		name:      "",
+		evaluator: NilEvaluator,
+		matcher:   m,
 	}
 }
 

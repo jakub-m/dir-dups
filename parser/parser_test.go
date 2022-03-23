@@ -9,14 +9,14 @@ import (
 func getParser() Parser {
 	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`)
 	literalAs := Literal("as")
-	optionalAlias := Optional{
+	optionalAlias := Optional(
 		Seq(
 			WhiteSpace,
 			literalAs,
 			WhiteSpace,
 			identifier,
 		),
-	}
+	)
 
 	pattern := QuotedString()
 
@@ -46,9 +46,9 @@ func getParser() Parser {
 
 	literalIf := Literal("if")
 
-	optionalStartingIf := Optional{
+	optionalStartingIf := Optional(
 		Seq(literalIf, WhiteSpace),
-	}
+	)
 
 	literalThen := Literal("then")
 	literalKeep := Literal("keep")
@@ -56,7 +56,7 @@ func getParser() Parser {
 
 	actionSelector := OneOf(literalKeep, literalMove)
 
-	optionalActionAlias := Optional{identifier}
+	optionalActionAlias := Optional(identifier)
 
 	actionExpr := Seq(
 		actionSelector,

@@ -29,18 +29,16 @@ func getParser() Parser {
 
 	conditionExprRef := &Ref{}
 
-	conditionExpr := FirstOf{
-		Tokenizers: []Tokenizer{
-			Seq(
-				matchExpr,
-				WhiteSpace,
-				literalAnd,
-				WhiteSpace,
-				conditionExprRef,
-			),
+	conditionExpr := FirstOf(
+		Seq(
 			matchExpr,
-		},
-	}
+			WhiteSpace,
+			literalAnd,
+			WhiteSpace,
+			conditionExprRef,
+		),
+		matchExpr,
+	)
 
 	conditionExprRef.Set(conditionExpr)
 

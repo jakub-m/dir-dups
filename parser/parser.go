@@ -120,12 +120,15 @@ func (t LiteralTokenizer) String() string {
 
 var _ Tokenizer = (*LiteralTokenizer)(nil)
 
-type FirstOf struct {
-	Tokenizers []Tokenizer
-	label      string
+func FirstOf(tt ...Tokenizer) *FirstOfTokenizer {
+	return &FirstOfTokenizer{tt}
 }
 
-func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+type FirstOfTokenizer struct {
+	Tokenizers []Tokenizer
+}
+
+func (t FirstOfTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	for _, tok := range t.Tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
 		if err == nil {
@@ -135,12 +138,12 @@ func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, nil, NewErrorWithCursor(cur, "could not continue")
 }
 
-func (t FirstOf) String() string {
+func (t FirstOfTokenizer) String() string {
 	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
 	return strings.Join(ts, " or ")
 }
 
-var _ Tokenizer = (*FirstOf)(nil)
+var _ Tokenizer = (*FirstOfTokenizer)(nil)
 
 func OneOf(tt ...Tokenizer) *OneOfTokenizer {
 	return &OneOfTokenizer{tt}

@@ -82,25 +82,30 @@ type MultiEvaluator interface {
 
 // Below are the concrete tokenizers
 
-func Literal(value string, ev Evaluator) Tokenizer {
-	return literal{
-		Value:     value,
-		Evaluator: ev,
+func NewLiteral(value string) *Literal {
+	return &Literal{
+		value:     value,
+		evaluator: NilEvaluator,
 	}
 }
 
-type literal struct {
-	// Value is the exact value to match
-	Value     string
-	Evaluator Evaluator
+func (l *Literal) WithEvaluator(ev Evaluator) *Literal {
+	l.evaluator = ev
+	return l
 }
 
-func (t literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+type Literal struct {
+	// value is the exact value to match
+	value     string
+	evaluator Evaluator
+}
+
+func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	inputAtPosition := cur.AtPos()
-	if strings.HasPrefix(inputAtPosition, t.Value) {
-		n := len(t.Value)
+	if strings.HasPrefix(inputAtPosition, t.value) {
+		n := len(t.value)
 		lexeme := inputAtPosition[:n]
-		ast, err := t.Evaluator.Evaluate(lexeme)
+		ast, err := t.evaluator.Evaluate(lexeme)
 		if err != nil {
 			return cur, nil, NewErrorWithCursor(cur, err.Error())
 		}
@@ -109,11 +114,11 @@ func (t literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, nil, NewErrorWithCursor(cur, "expected \"%s\"", t.String())
 }
 
-func (t literal) String() string {
-	return t.Value
+func (t Literal) String() string {
+	return t.value
 }
 
-var _ Tokenizer = (*literal)(nil)
+var _ Tokenizer = (*Literal)(nil)
 
 type FirstOf struct {
 	Tokenizers []Tokenizer

@@ -15,7 +15,7 @@ func getParser() Parser {
 		Evaluator: NilEvaluator,
 	}
 
-	literalAs := Literal("as", NilEvaluator)
+	literalAs := NewLiteral("as")
 
 	optionalAlias := Optional{
 		Seq{
@@ -37,7 +37,7 @@ func getParser() Parser {
 		Evaluator: NilMultiEvaluator,
 	}
 
-	literalAnd := Literal("and", NilEvaluator)
+	literalAnd := NewLiteral("and")
 
 	conditionExprRef := &Ref{}
 
@@ -59,7 +59,7 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalIf := Literal("if", NilEvaluator)
+	literalIf := NewLiteral("if")
 
 	optionalStartingIf := Optional{
 		Seq{
@@ -70,11 +70,9 @@ func getParser() Parser {
 		},
 	}
 
-	literalThen := Literal("then", NilEvaluator)
-
-	literalKeep := Literal("keep", NilEvaluator)
-
-	literalMove := Literal("move", NilEvaluator)
+	literalThen := NewLiteral("then")
+	literalKeep := NewLiteral("keep")
+	literalMove := NewLiteral("move")
 
 	actionSelector := OneOf{
 		Tokenizers: []Tokenizer{

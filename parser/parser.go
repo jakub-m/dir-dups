@@ -86,8 +86,6 @@ type Literal struct {
 	// Value is the exact value to match
 	Value     string
 	Evaluator Evaluator
-	// Name is a displayable, context specific name
-	Name string
 }
 
 func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
@@ -105,7 +103,7 @@ func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 }
 
 func (t Literal) String() string {
-	return t.Name
+	return t.Value
 }
 
 var _ Tokenizer = (*Literal)(nil)

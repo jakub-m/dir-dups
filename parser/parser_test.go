@@ -27,7 +27,6 @@ func getParser() Parser {
 
 	literalAs := Literal{
 		Value:     "as",
-		Name:      "as",
 		Evaluator: NilEvaluator,
 	}
 
@@ -53,7 +52,6 @@ func getParser() Parser {
 
 	literalAnd := Literal{
 		Value:     "and",
-		Name:      "and",
 		Evaluator: NilEvaluator,
 	}
 
@@ -81,7 +79,6 @@ func getParser() Parser {
 
 	literalIf := Literal{
 		Value:     "if",
-		Name:      "if",
 		Evaluator: NilEvaluator,
 	}
 
@@ -96,19 +93,16 @@ func getParser() Parser {
 
 	literalThen := Literal{
 		Value:     "then",
-		Name:      "then",
 		Evaluator: NilEvaluator,
 	}
 
 	literalKeep := Literal{
 		Value:     "keep",
-		Name:      "keep",
 		Evaluator: NilEvaluator,
 	}
 
 	literalMove := Literal{
 		Value:     "move",
-		Name:      "move",
 		Evaluator: NilEvaluator,
 	}
 
@@ -119,9 +113,13 @@ func getParser() Parser {
 		},
 	}
 
+	optionalActionAlias := Optional{identifier}
+
 	actionExpr := Seq{
 		Tokenizers: []Tokenizer{
 			actionSelector,
+			WhiteSpace,
+			optionalActionAlias,
 		},
 		Evaluator: NilMultiEvaluator,
 	}
@@ -144,7 +142,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar" as x then keep`
+	in := `if "foo" and "bar" as x then keep x`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

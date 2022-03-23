@@ -7,52 +7,47 @@ import (
 )
 
 func getParser() Parser {
-	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`)
-	literalAs := Literal("as")
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithCategory("ALIAS_IDENTIFIER")
 	optionalAlias := Optional(
 		Seq(
 			WhiteSpace,
-			literalAs,
+			Literal("as"),
 			WhiteSpace,
 			identifier,
 		),
 	)
 
-	pattern := QuotedString()
+	pattern := QuotedString().WithCategory("PATH_PATTERN")
+
+	conditionExprRef := Ref()
 
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	)
+	).WithCategory("MATCH_EXPR")
 
-	literalAnd := Literal("and")
-
-	conditionExprRef := Ref()
+	matchExprRecur := Seq(
+		matchExpr,
+		WhiteSpace,
+		Literal("and"),
+		WhiteSpace,
+		conditionExprRef,
+	).WithCategory("MATCH_EXPR")
 
 	conditionExpr := FirstOf(
-		Seq(
-			matchExpr,
-			WhiteSpace,
-			literalAnd,
-			WhiteSpace,
-			conditionExprRef,
-		),
+		matchExprRecur,
 		matchExpr,
 	)
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalIf := Literal("if")
+	literalKeep := Literal("keep").WithCategory("ACTION_TYPE")
+	literalMove := Literal("move").WithCategory("ACTION_TYPE")
 
-	optionalStartingIf := Optional(
-		Seq(literalIf, WhiteSpace),
+	actionSelector := OneOf(
+		literalKeep,
+		literalMove,
 	)
-
-	literalThen := Literal("then")
-	literalKeep := Literal("keep")
-	literalMove := Literal("move")
-
-	actionSelector := OneOf(literalKeep, literalMove)
 
 	optionalActionAlias := Optional(identifier)
 
@@ -60,13 +55,13 @@ func getParser() Parser {
 		actionSelector,
 		WhiteSpace,
 		optionalActionAlias,
-	)
+	).WithCategory("ACTION_EXPR")
 
 	instructionTokenizer := Seq(
-		optionalStartingIf,
+		Optional(Seq(Literal("if"), WhiteSpace)),
 		conditionExpr,
 		WhiteSpace,
-		literalThen,
+		Literal("then"),
 		WhiteSpace,
 		actionExpr,
 	)

@@ -186,12 +186,19 @@ func (t OneOfTokenizer) String() string {
 
 var _ Tokenizer = (*OneOfTokenizer)(nil)
 
-type Seq struct {
+func Seq(tt ...Tokenizer) *SeqTokenizer {
+	return &SeqTokenizer{
+		Tokenizers: tt,
+		Evaluator:  NilMultiEvaluator,
+	}
+}
+
+type SeqTokenizer struct {
 	Tokenizers []Tokenizer
 	Evaluator  func([]AstNode) (AstNode, error)
 }
 
-func (t Seq) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	nodes := []AstNode{}
 	for _, tok := range t.Tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
@@ -208,13 +215,13 @@ func (t Seq) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, ast, nil
 }
 
-func (t Seq) String() string {
+func (t SeqTokenizer) String() string {
 	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
 	ts = coll.FilterSlice(ts, func(s string) bool { return s != "" })
 	return strings.Join(ts, " ")
 }
 
-var _ Tokenizer = (*Seq)(nil)
+var _ Tokenizer = (*SeqTokenizer)(nil)
 
 type Optional struct {
 	Tokenizer Tokenizer

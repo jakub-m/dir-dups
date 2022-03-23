@@ -10,26 +10,20 @@ func getParser() Parser {
 	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`)
 	literalAs := Literal("as")
 	optionalAlias := Optional{
-		Seq{
-			Tokenizers: []Tokenizer{
-				WhiteSpace,
-				literalAs,
-				WhiteSpace,
-				identifier,
-			},
-			Evaluator: NilMultiEvaluator,
-		},
+		Seq(
+			WhiteSpace,
+			literalAs,
+			WhiteSpace,
+			identifier,
+		),
 	}
 
 	pattern := QuotedString()
 
-	matchExpr := Seq{
-		Tokenizers: []Tokenizer{
-			pattern,
-			optionalAlias,
-		},
-		Evaluator: NilMultiEvaluator,
-	}
+	matchExpr := Seq(
+		pattern,
+		optionalAlias,
+	)
 
 	literalAnd := Literal("and")
 
@@ -37,16 +31,13 @@ func getParser() Parser {
 
 	conditionExpr := FirstOf{
 		Tokenizers: []Tokenizer{
-			Seq{
-				Tokenizers: []Tokenizer{
-					matchExpr,
-					WhiteSpace,
-					literalAnd,
-					WhiteSpace,
-					conditionExprRef,
-				},
-				Evaluator: NilMultiEvaluator,
-			},
+			Seq(
+				matchExpr,
+				WhiteSpace,
+				literalAnd,
+				WhiteSpace,
+				conditionExprRef,
+			),
 			matchExpr,
 		},
 	}
@@ -56,12 +47,7 @@ func getParser() Parser {
 	literalIf := Literal("if")
 
 	optionalStartingIf := Optional{
-		Seq{
-			Tokenizers: []Tokenizer{
-				literalIf, WhiteSpace,
-			},
-			Evaluator: NilMultiEvaluator,
-		},
+		Seq(literalIf, WhiteSpace),
 	}
 
 	literalThen := Literal("then")
@@ -72,26 +58,20 @@ func getParser() Parser {
 
 	optionalActionAlias := Optional{identifier}
 
-	actionExpr := Seq{
-		Tokenizers: []Tokenizer{
-			actionSelector,
-			WhiteSpace,
-			optionalActionAlias,
-		},
-		Evaluator: NilMultiEvaluator,
-	}
+	actionExpr := Seq(
+		actionSelector,
+		WhiteSpace,
+		optionalActionAlias,
+	)
 
-	instructionTokenizer := Seq{
-		Tokenizers: []Tokenizer{
-			optionalStartingIf,
-			conditionExpr,
-			WhiteSpace,
-			literalThen,
-			WhiteSpace,
-			actionExpr,
-		},
-		Evaluator: NilMultiEvaluator,
-	}
+	instructionTokenizer := Seq(
+		optionalStartingIf,
+		conditionExpr,
+		WhiteSpace,
+		literalThen,
+		WhiteSpace,
+		actionExpr,
+	)
 
 	return Parser{instructionTokenizer}
 }

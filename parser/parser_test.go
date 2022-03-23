@@ -46,7 +46,7 @@ func getParser() Parser {
 
 	_ = literalAnd
 
-	// conditionExprRef := Ref{}
+	conditionExprRef := Ref{}
 
 	conditionExpr := FirstOf{
 		Tokenizers: []Tokenizer{
@@ -56,8 +56,7 @@ func getParser() Parser {
 					WhiteSpace,
 					literalAnd,
 					WhiteSpace,
-					matchExpr,
-					// conditionalExprRef,
+					conditionExprRef,
 				},
 				Evaluator: NilMultiEvaluator,
 			},
@@ -65,7 +64,7 @@ func getParser() Parser {
 		},
 	}
 
-	// conditionExprRef.Set(conditionExpr)
+	conditionExprRef.Set(conditionExpr)
 
 	literalIf := Literal{
 		Value:     "if",

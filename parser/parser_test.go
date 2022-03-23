@@ -1,22 +1,14 @@
 package parser
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func getParser() Parser {
-
-	identifier := Regex{
-		Matcher:   regexp.MustCompile(`[a-zA-Z][a-zA-Z_0-9]*`),
-		Name:      "identifier",
-		Evaluator: NilEvaluator,
-	}
-
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`)
 	literalAs := Literal("as")
-
 	optionalAlias := Optional{
 		Seq{
 			Tokenizers: []Tokenizer{
@@ -29,9 +21,11 @@ func getParser() Parser {
 		},
 	}
 
+	pattern := QuotedString()
+
 	matchExpr := Seq{
 		Tokenizers: []Tokenizer{
-			QuotedString("part_of_path", NilEvaluator),
+			pattern,
 			optionalAlias,
 		},
 		Evaluator: NilMultiEvaluator,

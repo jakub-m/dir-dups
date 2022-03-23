@@ -242,13 +242,21 @@ var _ AstNode = (*nilAstNode)(nil)
 
 type AstNode any
 
-type Regex struct {
+func Regex(pattern string) *RegexTokenizer {
+	return &RegexTokenizer{
+		Matcher:   regexp.MustCompile(pattern),
+		Name:      pattern,
+		Evaluator: NilEvaluator,
+	}
+}
+
+type RegexTokenizer struct {
 	Matcher   *regexp.Regexp
 	Name      string
 	Evaluator Evaluator
 }
 
-func (t Regex) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	in := cur.AtPos()
 	loc := t.Matcher.FindStringIndex(in)
 	if loc == nil || loc[0] != 0 {
@@ -261,11 +269,11 @@ func (t Regex) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur.Advance(loc[1] - loc[0]), ast, nil
 }
 
-func (t Regex) String() string {
+func (t RegexTokenizer) String() string {
 	return t.Name
 }
 
-var _ Tokenizer = (*Regex)(nil)
+var _ Tokenizer = (*RegexTokenizer)(nil)
 
 // Ref is used for self-referencing, recurrent expressions.
 type Ref struct {
@@ -293,20 +301,15 @@ func (t *Ref) Set(tok Tokenizer) {
 
 var _ Tokenizer = (*Ref)(nil)
 
-func QuotedString(name string, evaluator Evaluator) Tokenizer {
-	m := regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
-	return Regex{
-		Name:      name,
-		Evaluator: evaluator,
-		Matcher:   m,
-	}
+func QuotedString() *RegexTokenizer {
+	return Regex(`"(?:[^"\\]|\\.)*"`)
 }
 
 var WhiteSpace = whiteSpace()
 
 func whiteSpace() Tokenizer {
 	m := regexp.MustCompile(`[ \t]+`)
-	return Regex{
+	return RegexTokenizer{
 		Name:      "",
 		Evaluator: NilEvaluator,
 		Matcher:   m,

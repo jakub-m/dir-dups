@@ -291,27 +291,31 @@ func (t RegexTokenizer) String() string {
 
 var _ Tokenizer = (*RegexTokenizer)(nil)
 
-// Ref is used for self-referencing, recurrent expressions.
-type Ref struct {
+func Ref() *RefTokenizer {
+	return &RefTokenizer{}
+}
+
+// RefTokenizer is used for self-referencing, recurrent expressions.
+type RefTokenizer struct {
 	tokenizer Tokenizer
 }
 
-func (t Ref) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t RefTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return t.tokenizer.Tokenize(cur)
 }
 
-func (t Ref) String() string {
+func (t RefTokenizer) String() string {
 	return "..."
 }
 
-func (t *Ref) Set(tok Tokenizer) {
+func (t *RefTokenizer) Set(tok Tokenizer) {
 	if tok == nil {
 		panic("must not pass nil to Set")
 	}
 	t.tokenizer = tok
 }
 
-var _ Tokenizer = (*Ref)(nil)
+var _ Tokenizer = (*RefTokenizer)(nil)
 
 func QuotedString() *RegexTokenizer {
 	return Regex(`"(?:[^"\\]|\\.)*"`)

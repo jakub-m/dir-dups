@@ -27,7 +27,7 @@ func getParser() Parser {
 
 	literalAnd := Literal("and")
 
-	conditionExprRef := &Ref{}
+	conditionExprRef := Ref()
 
 	conditionExpr := FirstOf(
 		Seq(

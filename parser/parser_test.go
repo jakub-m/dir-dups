@@ -19,20 +19,11 @@ func getParser() Parser {
 
 	// _ = Or(Literal("move"), Literal("keep"))
 
-	// // line := Sequence(
-	// // Optional(Literal("if")),
-	// // conditionExpr,
-	// // Literal("then"),
-	// // actionExpr,
-	// // )
-
 	identifier := Regex{
 		Matcher:   regexp.MustCompile(`[a-zA-Z][a-zA-Z_0-9]*`),
 		Name:      "identifier",
 		Evaluator: NilEvaluator,
 	}
-
-	_ = identifier
 
 	literalAs := Literal{
 		Value:     "as",
@@ -103,12 +94,46 @@ func getParser() Parser {
 		},
 	}
 
+	literalThen := Literal{
+		Value:     "then",
+		Name:      "then",
+		Evaluator: NilEvaluator,
+	}
+
+	literalKeep := Literal{
+		Value:     "keep",
+		Name:      "keep",
+		Evaluator: NilEvaluator,
+	}
+
+	literalMove := Literal{
+		Value:     "move",
+		Name:      "move",
+		Evaluator: NilEvaluator,
+	}
+
+	actionSelector := OneOf{
+		Tokenizers: []Tokenizer{
+			literalKeep,
+			literalMove,
+		},
+	}
+
+	actionExpr := Seq{
+		Tokenizers: []Tokenizer{
+			actionSelector,
+		},
+		Evaluator: NilMultiEvaluator,
+	}
+
 	instructionTokenizer := Seq{
 		Tokenizers: []Tokenizer{
 			optionalStartingIf,
 			conditionExpr,
-			// 	//WhiteSpace,
-			// 	//Literal("then"),
+			WhiteSpace,
+			literalThen,
+			WhiteSpace,
+			actionExpr,
 		},
 		Evaluator: NilMultiEvaluator,
 	}
@@ -119,7 +144,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar" as x`
+	in := `if "foo" and "bar" as x then keep`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

@@ -124,41 +124,52 @@ func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, nil, NewErrorWithCursor(cur, "could not continue")
 }
 
-// func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
-// 	type result struct {
-// 		tok    Tokenizer
-// 		ast    AstNode
-// 		cursor Cursor
-// 	}
-// 	results := []result{}
-// 	for _, tok := range t.Tokenizers {
-// 		nextCur, ast, err := tok.Tokenize(cur)
-// 		if err != nil {
-// 			continue
-// 		}
-// 		results = append(results, result{
-// 			tok:    tok,
-// 			ast:    ast,
-// 			cursor: nextCur,
-// 		})
-// 	}
-// 	if len(results) == 0 {
-// 		parserStrings := coll.TransformSlice(t.Tokenizers, func(tok Tokenizer) string { return tok.String() })
-// 		return cur, nil, NewErrorWithCursor(cur, "failed to parse any of: %s", strings.Join(parserStrings, ", "))
-// 	}
-// 	if len(results) > 1 {
-// 		resultStrings := coll.TransformSlice(results, func(r result) string { return r.tok.String() })
-// 		return cur, nil, NewErrorWithCursor(cur, "more than one match: %s", strings.Join(resultStrings, ", "))
-// 	}
-// 	return results[0].cursor, results[0].ast, nil
-// }
-
 func (t FirstOf) String() string {
 	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
 	return strings.Join(ts, " or ")
 }
 
 var _ Tokenizer = (*FirstOf)(nil)
+
+type OneOf struct {
+	Tokenizers []Tokenizer
+}
+
+func (t OneOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	type result struct {
+		tok    Tokenizer
+		ast    AstNode
+		cursor Cursor
+	}
+	results := []result{}
+	for _, tok := range t.Tokenizers {
+		nextCur, ast, err := tok.Tokenize(cur)
+		if err != nil {
+			continue
+		}
+		results = append(results, result{
+			tok:    tok,
+			ast:    ast,
+			cursor: nextCur,
+		})
+	}
+	if len(results) == 0 {
+		parserStrings := coll.TransformSlice(t.Tokenizers, func(tok Tokenizer) string { return tok.String() })
+		return cur, nil, NewErrorWithCursor(cur, "failed to parse any of: %s", strings.Join(parserStrings, ", "))
+	}
+	if len(results) > 1 {
+		resultStrings := coll.TransformSlice(results, func(r result) string { return r.tok.String() })
+		return cur, nil, NewErrorWithCursor(cur, "more than one match: %s", strings.Join(resultStrings, ", "))
+	}
+	return results[0].cursor, results[0].ast, nil
+}
+
+func (t OneOf) String() string {
+	ts := coll.TransformSlice(t.Tokenizers, func(t Tokenizer) string { return t.String() })
+	return strings.Join(ts, " or ")
+}
+
+var _ Tokenizer = (*OneOf)(nil)
 
 type Seq struct {
 	Tokenizers []Tokenizer

@@ -6,8 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	ALIAS_IDENTIFIER = "ASIAS_IDENTIFIER"
+	PATH_PATTERN     = "PATH_PATTERN"
+	MATCH_EXPR       = "MATCH_EXPR"
+	ACTION_TYPE      = "ACTION_TYPE"
+	ACTION_EXPR      = "ACTION_EXPR"
+)
+
 func getParser() Parser {
-	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithCategory("ALIAS_IDENTIFIER")
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithCategory(ALIAS_IDENTIFIER)
 	optionalAlias := Optional(
 		Seq(
 			WhiteSpace,
@@ -17,14 +25,14 @@ func getParser() Parser {
 		),
 	)
 
-	pattern := QuotedString().WithCategory("PATH_PATTERN")
+	pattern := QuotedString().WithCategory(PATH_PATTERN)
 
 	conditionExprRef := Ref()
 
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	).WithCategory("MATCH_EXPR")
+	).WithCategory(MATCH_EXPR)
 
 	matchExprRecur := Seq(
 		matchExpr,
@@ -32,7 +40,7 @@ func getParser() Parser {
 		Literal("and"),
 		WhiteSpace,
 		conditionExprRef,
-	).WithCategory("MATCH_EXPR")
+	).WithCategory(MATCH_EXPR)
 
 	conditionExpr := FirstOf(
 		matchExprRecur,
@@ -41,8 +49,8 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalKeep := Literal("keep").WithCategory("ACTION_TYPE")
-	literalMove := Literal("move").WithCategory("ACTION_TYPE")
+	literalKeep := Literal("keep").WithCategory(ACTION_TYPE)
+	literalMove := Literal("move").WithCategory(ACTION_TYPE)
 
 	actionSelector := OneOf(
 		literalKeep,
@@ -55,7 +63,7 @@ func getParser() Parser {
 		actionSelector,
 		WhiteSpace,
 		optionalActionAlias,
-	).WithCategory("ACTION_EXPR")
+	).WithCategory(ACTION_EXPR)
 
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),

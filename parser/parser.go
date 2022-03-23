@@ -109,7 +109,22 @@ func (t Literal) String() string {
 var _ Tokenizer = (*Literal)(nil)
 
 type FirstOf struct {
+	HasLabel
 	Tokenizers []Tokenizer
+	label      string
+}
+
+func (t *FirstOf) WithLabel(label string) *FirstOf {
+	t.label = label
+	return t
+}
+
+func (t FirstOf) Label() string {
+	return t.label
+}
+
+type HasLabel interface {
+	Label() string
 }
 
 func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {

@@ -34,6 +34,8 @@ func getParser() Parser {
 		Evaluator: NilEvaluator,
 	}
 
+	_ = identifier
+
 	literalAs := Literal{
 		Value:     "as",
 		Name:      "as",
@@ -45,8 +47,8 @@ func getParser() Parser {
 			Tokenizers: []Tokenizer{
 				WhiteSpace,
 				literalAs,
-				WhiteSpace,
-				identifier,
+				// WhiteSpace,
+				// identifier,
 			},
 			Evaluator: NilMultiEvaluator,
 		},
@@ -119,7 +121,7 @@ func getParser() Parser {
 func TestParse(t *testing.T) {
 	p := getParser()
 	//in := `if "foo" and "bar" as x then keep x`
-	in := `if "foo" and "bar" as x`
+	in := `if "foo" and "bar" as`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""

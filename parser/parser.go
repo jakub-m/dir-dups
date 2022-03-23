@@ -82,13 +82,20 @@ type MultiEvaluator interface {
 
 // Below are the concrete tokenizers
 
-type Literal struct {
+func Literal(value string, ev Evaluator) Tokenizer {
+	return literal{
+		Value:     value,
+		Evaluator: ev,
+	}
+}
+
+type literal struct {
 	// Value is the exact value to match
 	Value     string
 	Evaluator Evaluator
 }
 
-func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	inputAtPosition := cur.AtPos()
 	if strings.HasPrefix(inputAtPosition, t.Value) {
 		n := len(t.Value)
@@ -102,29 +109,15 @@ func (t Literal) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	return cur, nil, NewErrorWithCursor(cur, "expected \"%s\"", t.String())
 }
 
-func (t Literal) String() string {
+func (t literal) String() string {
 	return t.Value
 }
 
-var _ Tokenizer = (*Literal)(nil)
+var _ Tokenizer = (*literal)(nil)
 
 type FirstOf struct {
-	HasLabel
 	Tokenizers []Tokenizer
 	label      string
-}
-
-func (t *FirstOf) WithLabel(label string) *FirstOf {
-	t.label = label
-	return t
-}
-
-func (t FirstOf) Label() string {
-	return t.label
-}
-
-type HasLabel interface {
-	Label() string
 }
 
 func (t FirstOf) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
@@ -268,6 +261,10 @@ var _ Tokenizer = (*Regex)(nil)
 // Ref is used for self-referencing, recurrent expressions.
 type Ref struct {
 	Tokenizer Tokenizer
+}
+
+type foo struct {
+	bar string
 }
 
 func (t Ref) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {

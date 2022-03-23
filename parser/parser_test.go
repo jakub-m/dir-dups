@@ -9,26 +9,13 @@ import (
 
 func getParser() Parser {
 
-	// if "foo" and "bar" as x then keep x
-
-	// path := Tokenizer{
-	// 	Lexer: QuotedString,
-	// 	Name: "part of path"
-	// 	Evaluator: func(lexeme string) {return PathToken{lexem}}
-	// }{}
-
-	// _ = Or(Literal("move"), Literal("keep"))
-
 	identifier := Regex{
 		Matcher:   regexp.MustCompile(`[a-zA-Z][a-zA-Z_0-9]*`),
 		Name:      "identifier",
 		Evaluator: NilEvaluator,
 	}
 
-	literalAs := Literal{
-		Value:     "as",
-		Evaluator: NilEvaluator,
-	}
+	literalAs := Literal("as", NilEvaluator)
 
 	optionalAlias := Optional{
 		Seq{
@@ -50,12 +37,7 @@ func getParser() Parser {
 		Evaluator: NilMultiEvaluator,
 	}
 
-	literalAnd := Literal{
-		Value:     "and",
-		Evaluator: NilEvaluator,
-	}
-
-	_ = literalAnd
+	literalAnd := Literal("and", NilEvaluator)
 
 	conditionExprRef := &Ref{}
 
@@ -77,10 +59,7 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalIf := Literal{
-		Value:     "if",
-		Evaluator: NilEvaluator,
-	}
+	literalIf := Literal("if", NilEvaluator)
 
 	optionalStartingIf := Optional{
 		Seq{
@@ -91,20 +70,11 @@ func getParser() Parser {
 		},
 	}
 
-	literalThen := Literal{
-		Value:     "then",
-		Evaluator: NilEvaluator,
-	}
+	literalThen := Literal("then", NilEvaluator)
 
-	literalKeep := Literal{
-		Value:     "keep",
-		Evaluator: NilEvaluator,
-	}
+	literalKeep := Literal("keep", NilEvaluator)
 
-	literalMove := Literal{
-		Value:     "move",
-		Evaluator: NilEvaluator,
-	}
+	literalMove := Literal("move", NilEvaluator)
 
 	actionSelector := OneOf{
 		Tokenizers: []Tokenizer{

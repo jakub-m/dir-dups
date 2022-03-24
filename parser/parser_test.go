@@ -14,7 +14,7 @@ const (
 	ACTION_EXPR      = "ACTION_EXPR"
 )
 
-func IdentityEvaluator(value any) (AstNode, error) {
+func Identity(value any) (AstNode, error) {
 	return value, nil
 }
 
@@ -53,8 +53,8 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalKeep := Literal("keep").WithLabel(ACTION_TYPE).WithEvaluator(IdentityEvaluator)
-	literalMove := Literal("move").WithLabel(ACTION_TYPE).WithEvaluator(IdentityEvaluator)
+	literalKeep := Literal("keep").WithLabel(ACTION_TYPE).WithEvaluator(Identity)
+	literalMove := Literal("move").WithLabel(ACTION_TYPE).WithEvaluator(Identity)
 
 	actionSelector := OneOf(
 		literalKeep,
@@ -67,7 +67,7 @@ func getParser() Parser {
 		actionSelector,
 		WhiteSpace,
 		optionalActionAlias,
-	).WithLabel(ACTION_EXPR)
+	).WithLabel(ACTION_EXPR).WithEvaluator(actionEvaluator)
 
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
@@ -79,6 +79,16 @@ func getParser() Parser {
 	)
 
 	return Parser{instructionTokenizer}
+}
+
+func actionEvaluator(args []any) (AstNode, error) {
+	action := args[0].(string)
+	return actionNode{action: action}, nil
+}
+
+type actionNode struct {
+	action string
+	// TODO add alias here
 }
 
 func TestParse(t *testing.T) {

@@ -114,6 +114,7 @@ func (t LiteralTokenizer) String() string {
 	return t.value
 }
 
+// TODO do we need label for anything
 func (t *LiteralTokenizer) WithLabel(c string) *LiteralTokenizer {
 	t.category = c
 	return t

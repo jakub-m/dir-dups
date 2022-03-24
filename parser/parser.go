@@ -77,7 +77,7 @@ type Evaluator interface {
 }
 
 type MultiEvaluator interface {
-	Evaluate(lexeme []string) (AstNode, error)
+	Evaluate([]AstNode) (AstNode, error)
 }
 
 // Below are the concrete tokenizers
@@ -119,7 +119,7 @@ func (t LiteralTokenizer) String() string {
 	return t.value
 }
 
-func (t *LiteralTokenizer) WithCategory(c string) *LiteralTokenizer {
+func (t *LiteralTokenizer) WithLabel(c string) *LiteralTokenizer {
 	t.category = c
 	return t
 }
@@ -204,7 +204,7 @@ func Seq(tt ...Tokenizer) *SeqTokenizer {
 
 type SeqTokenizer struct {
 	tokenizers []Tokenizer
-	evaluator  func([]AstNode) (AstNode, error)
+	evaluator  MultiEvaluator
 	category   string
 }
 
@@ -218,7 +218,7 @@ func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 		nodes = append(nodes, ast)
 		cur = nextCur
 	}
-	ast, err := t.evaluator(nodes)
+	ast, err := t.evaluator.Evaluate(nodes)
 	if err != nil {
 		return cur, nil, NewErrorWithCursor(cur, err.Error())
 	}
@@ -231,8 +231,13 @@ func (t SeqTokenizer) String() string {
 	return strings.Join(ts, " ")
 }
 
-func (t *SeqTokenizer) WithCategory(category string) *SeqTokenizer {
+func (t *SeqTokenizer) WithLabel(category string) *SeqTokenizer {
 	t.category = category
+	return t
+}
+
+func (t *SeqTokenizer) WithEvaluator(ev MultiEvaluator) *SeqTokenizer {
+	t.evaluator = ev
 	return t
 }
 
@@ -285,7 +290,7 @@ type RegexTokenizer struct {
 	evaluator Evaluator
 }
 
-func (t *RegexTokenizer) WithCategory(category string) *RegexTokenizer {
+func (t *RegexTokenizer) WithLabel(category string) *RegexTokenizer {
 	t.category = category
 	return t
 }
@@ -359,6 +364,24 @@ func (e nilEvaluator) Evaluate(lexeme string) (AstNode, error) {
 	return NilAstNode, nil
 }
 
-func NilMultiEvaluator(as []AstNode) (AstNode, error) {
+var NilMultiEvaluator = nilMultiEvaluator{}
+
+type nilMultiEvaluator struct {
+}
+
+func (e nilMultiEvaluator) Evaluate(nodes []AstNode) (AstNode, error) {
 	return NilAstNode, nil
+}
+
+func OnlyWithType[T any](values ...any) T {
+	results := []T{}
+	for _, v := range values {
+		if t, ok := v.(T); ok {
+			results = append(results, t)
+		}
+	}
+	if len(results) != 1 {
+		panic(fmt.Sprintf("expected exactly 1 value of type %+v, got %d", (*T)(nil), len(results)))
+	}
+	return results[0]
 }

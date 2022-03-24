@@ -15,7 +15,7 @@ const (
 )
 
 func getParser() Parser {
-	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithCategory(ALIAS_IDENTIFIER)
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER)
 	optionalAlias := Optional(
 		Seq(
 			WhiteSpace,
@@ -25,14 +25,14 @@ func getParser() Parser {
 		),
 	)
 
-	pattern := QuotedString().WithCategory(PATH_PATTERN)
+	pattern := QuotedString().WithLabel(PATH_PATTERN)
 
 	conditionExprRef := Ref()
 
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	).WithCategory(MATCH_EXPR)
+	).WithLabel(MATCH_EXPR)
 
 	matchExprRecur := Seq(
 		matchExpr,
@@ -40,7 +40,7 @@ func getParser() Parser {
 		Literal("and"),
 		WhiteSpace,
 		conditionExprRef,
-	).WithCategory(MATCH_EXPR)
+	).WithLabel(MATCH_EXPR)
 
 	conditionExpr := FirstOf(
 		matchExprRecur,
@@ -49,8 +49,8 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalKeep := Literal("keep").WithCategory(ACTION_TYPE)
-	literalMove := Literal("move").WithCategory(ACTION_TYPE)
+	literalKeep := Literal("keep").WithLabel(ACTION_TYPE)
+	literalMove := Literal("move").WithLabel(ACTION_TYPE)
 
 	actionSelector := OneOf(
 		literalKeep,
@@ -63,7 +63,7 @@ func getParser() Parser {
 		actionSelector,
 		WhiteSpace,
 		optionalActionAlias,
-	).WithCategory(ACTION_EXPR)
+	).WithLabel(ACTION_EXPR)
 
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
@@ -87,6 +87,13 @@ func TestParse(t *testing.T) {
 		errString = "'" + err.Cursor().AtPos() + "'"
 	}
 	assert.Nil(t, err, errString)
-	print(root)
 	// assert.Equal(t, len(in.Input), cursor.Position)
+}
+
+func TestOnlyWithType(t *testing.T) {
+	foo := []any{1123, "dupa", 1.123}
+	i := OnlyWithType[int](foo...)
+	assert.Equal(t, 1123, i)
+	s := OnlyWithType[string](foo...)
+	assert.Equal(t, "dupa", s)
 }

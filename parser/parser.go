@@ -13,7 +13,7 @@ type Parser struct {
 	Tokenizer Tokenizer
 }
 
-func (p Parser) ParseString(s string) (AstNode, ErrorWithCursor) {
+func (p Parser) ParseString(s string) (any, ErrorWithCursor) {
 	startCur := Cursor{s, 0}
 	cur, node, err := p.Tokenizer.Tokenize(startCur)
 	if !cur.IsEnd() {
@@ -23,7 +23,7 @@ func (p Parser) ParseString(s string) (AstNode, ErrorWithCursor) {
 }
 
 type Tokenizer interface {
-	Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor)
+	Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor)
 	String() string
 }
 
@@ -72,8 +72,8 @@ func (e errorWithCursor) Error() string {
 	return e.message
 }
 
-type Evaluator = func(any) (AstNode, error)
-type MultiEvaluator = func([]any) (AstNode, error)
+type Evaluator = func(any) (any, error)
+type MultiEvaluator = func([]any) (any, error)
 
 // Below are the concrete tokenizers
 
@@ -96,7 +96,7 @@ type LiteralTokenizer struct {
 	category  string
 }
 
-func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	inputAtPosition := cur.AtPos()
 	if strings.HasPrefix(inputAtPosition, t.value) {
 		n := len(t.value)
@@ -130,7 +130,7 @@ type FirstOfTokenizer struct {
 	Tokenizers []Tokenizer
 }
 
-func (t FirstOfTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t FirstOfTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	for _, tok := range t.Tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
 		if err == nil {
@@ -155,10 +155,10 @@ type OneOfTokenizer struct {
 	Tokenizers []Tokenizer
 }
 
-func (t OneOfTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t OneOfTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	type result struct {
 		tok    Tokenizer
-		ast    AstNode
+		ast    any
 		cursor Cursor
 	}
 	results := []result{}
@@ -204,7 +204,7 @@ type SeqTokenizer struct {
 	category   string
 }
 
-func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	nodes := []any{}
 	for _, tok := range t.tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
@@ -249,7 +249,7 @@ type OptionalTokenizer struct {
 	tokenizer Tokenizer
 }
 
-func (t OptionalTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t OptionalTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	if nextCur, ast, err := t.tokenizer.Tokenize(cur); err == nil {
 		return nextCur, ast, nil
 	} else {
@@ -266,10 +266,6 @@ var _ Tokenizer = (*OptionalTokenizer)(nil)
 var NilAstNode = &nilAstNode{}
 
 type nilAstNode struct{}
-
-var _ AstNode = (*nilAstNode)(nil)
-
-type AstNode any
 
 func Regex(pattern string) *RegexTokenizer {
 	return &RegexTokenizer{
@@ -296,7 +292,7 @@ func (t *RegexTokenizer) WithEvaluator(ev Evaluator) *RegexTokenizer {
 	return t
 }
 
-func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	in := cur.AtPos()
 	loc := t.matcher.FindStringIndex(in)
 	if loc == nil || loc[0] != 0 {
@@ -324,7 +320,7 @@ type RefTokenizer struct {
 	tokenizer Tokenizer
 }
 
-func (t RefTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+func (t RefTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
 	return t.tokenizer.Tokenize(cur)
 }
 
@@ -356,11 +352,11 @@ func whiteSpace() Tokenizer {
 	}
 }
 
-var NilEvaluator = func(value any) (AstNode, error) {
+var NilEvaluator = func(value any) (any, error) {
 	return NilAstNode, nil
 }
 
-var NilMultiEvaluator = func(values []any) (AstNode, error) {
+var NilMultiEvaluator = func(values []any) (any, error) {
 	return NilAstNode, nil
 }
 

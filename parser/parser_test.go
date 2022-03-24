@@ -29,14 +29,14 @@ func getParser() Parser {
 		),
 	)
 
-	pattern := QuotedString().WithLabel(PATH_PATTERN)
+	pattern := QuotedString().WithLabel(PATH_PATTERN).WithEvaluator(Identity)
 
 	conditionExprRef := Ref()
 
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	).WithLabel(MATCH_EXPR)
+	).WithLabel(MATCH_EXPR).WithEvaluator(matchEvaluator)
 
 	matchExprRecur := Seq(
 		matchExpr,
@@ -44,7 +44,7 @@ func getParser() Parser {
 		Literal("and"),
 		WhiteSpace,
 		conditionExprRef,
-	).WithLabel(MATCH_EXPR)
+	).WithLabel(MATCH_EXPR).WithEvaluator(matchRecurEvaluator)
 
 	conditionExpr := FirstOf(
 		matchExprRecur,
@@ -76,7 +76,7 @@ func getParser() Parser {
 		Literal("then"),
 		WhiteSpace,
 		actionExpr,
-	)
+	).WithEvaluator(instructionEvaluator)
 
 	return Parser{instructionTokenizer}
 }
@@ -89,6 +89,27 @@ func actionEvaluator(args []any) (AstNode, error) {
 type actionNode struct {
 	action string
 	// TODO add alias here
+}
+
+func matchEvaluator(args []any) (AstNode, error) {
+	pattern := args[0].(string)
+	return matchNode{pattern: pattern}, nil
+}
+
+func matchRecurEvaluator(args []any) (AstNode, error) {
+	// TODO handle the other args here!
+	m := args[0].(matchNode)
+	// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
+	return matchNode{pattern: m.pattern}, nil
+}
+
+type matchNode struct {
+	pattern string
+	// TODO add optional alias
+}
+
+func instructionEvaluator(args []any) (AstNode, error) {
+	return NilAstNode, nil
 }
 
 func TestParse(t *testing.T) {

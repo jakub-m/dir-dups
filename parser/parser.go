@@ -291,6 +291,11 @@ func (t *RegexTokenizer) WithLabel(category string) *RegexTokenizer {
 	return t
 }
 
+func (t *RegexTokenizer) WithEvaluator(ev Evaluator) *RegexTokenizer {
+	t.evaluator = ev
+	return t
+}
+
 func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	in := cur.AtPos()
 	loc := t.matcher.FindStringIndex(in)

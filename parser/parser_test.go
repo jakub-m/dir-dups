@@ -109,7 +109,15 @@ type matchNode struct {
 }
 
 func instructionEvaluator(args []any) (AstNode, error) {
-	return NilAstNode, nil
+	return instructionNode{
+		match:  OnlyWithType[matchNode](args...),
+		action: OnlyWithType[actionNode](args...),
+	}, nil
+}
+
+type instructionNode struct {
+	match  matchNode
+	action actionNode
 }
 
 func TestParse(t *testing.T) {
@@ -123,6 +131,15 @@ func TestParse(t *testing.T) {
 	}
 	assert.Nil(t, err, errString)
 	// assert.Equal(t, len(in.Input), cursor.Position)
+
+	assert.Equal(t,
+		instructionNode{
+			// TODO unquote
+			match:  matchNode{`"foo"`},
+			action: actionNode{`keep`},
+		},
+		root,
+	)
 }
 
 func TestOnlyWithType(t *testing.T) {

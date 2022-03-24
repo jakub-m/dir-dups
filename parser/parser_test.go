@@ -14,7 +14,7 @@ const (
 	ACTION_EXPR      = "ACTION_EXPR"
 )
 
-func Identity(value any) (any, error) {
+func Identity(value any) (AstNode, error) {
 	return value, nil
 }
 
@@ -81,7 +81,7 @@ func getParser() Parser {
 	return Parser{instructionTokenizer}
 }
 
-func actionEvaluator(args []any) (any, error) {
+func actionEvaluator(args []any) (AstNode, error) {
 	action := args[0].(string)
 	return actionNode{action: action}, nil
 }
@@ -91,12 +91,12 @@ type actionNode struct {
 	// TODO add alias here
 }
 
-func matchEvaluator(args []any) (any, error) {
+func matchEvaluator(args []any) (AstNode, error) {
 	pattern := args[0].(string)
 	return matchNode{pattern: pattern}, nil
 }
 
-func matchRecurEvaluator(args []any) (any, error) {
+func matchRecurEvaluator(args []any) (AstNode, error) {
 	// TODO handle the other args here!
 	m := args[0].(matchNode)
 	// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
@@ -108,7 +108,7 @@ type matchNode struct {
 	// TODO add optional alias
 }
 
-func instructionEvaluator(args []any) (any, error) {
+func instructionEvaluator(args []any) (AstNode, error) {
 	return instructionNode{
 		match:  OnlyWithType[matchNode](args),
 		action: OnlyWithType[actionNode](args),
@@ -134,7 +134,6 @@ func TestParse(t *testing.T) {
 
 	assert.Equal(t,
 		instructionNode{
-			// TODO unquote
 			match:  matchNode{`fo"o`},
 			action: actionNode{`keep`},
 		},

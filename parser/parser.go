@@ -73,7 +73,7 @@ func (e errorWithCursor) Error() string {
 }
 
 type Evaluator interface {
-	Evaluate(lexeme string) (AstNode, error)
+	Evaluate(AstNode) (AstNode, error)
 }
 
 type MultiEvaluator interface {
@@ -360,7 +360,7 @@ var NilEvaluator = nilEvaluator{}
 type nilEvaluator struct {
 }
 
-func (e nilEvaluator) Evaluate(lexeme string) (AstNode, error) {
+func (e nilEvaluator) Evaluate(lexeme AstNode) (AstNode, error) {
 	return NilAstNode, nil
 }
 

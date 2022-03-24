@@ -57,12 +57,13 @@ func getParser() Parser {
 
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
 		// TODO handle the other args here!
-		m := args[0].(matchNode)
+		m1 := args[0].(matchNode)
+		m2 := args[4].(matchNode)
 		// m.patternToAlias
 		// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
 		// m := make(map[string]string)
 		// m[pattern] = "" // TODO handle alias here
-		return matchNode{m.patternToAlias}, nil
+		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
 	}
 
 	matchExprRecur.WithEvaluator(matchRecurEvaluator)
@@ -119,14 +120,25 @@ type matchNode struct {
 
 func instructionEvaluator(args []any) (AstNode, error) {
 	return instructionNode{
-		match:  OnlyWithType[matchNode](args),
-		action: OnlyWithType[actionNode](args),
+		match:  OneWithType[matchNode](args),
+		action: OneWithType[actionNode](args),
 	}, nil
 }
 
 type instructionNode struct {
 	match  matchNode
 	action actionNode
+}
+
+func mergeMaps[K comparable, V any](m1, m2 map[K]V) map[K]V {
+	out := make(map[K]V)
+	for k, v := range m1 {
+		out[k] = v
+	}
+	for k, v := range m2 {
+		out[k] = v
+	}
+	return out
 }
 
 func TestParse(t *testing.T) {
@@ -144,7 +156,7 @@ func TestParse(t *testing.T) {
 	assert.Equal(t,
 		instructionNode{
 			match: matchNode{
-				map[string]string{`fo"o`: ""},
+				map[string]string{`fo"o`: "", "bar": ""},
 				//map[string]string{`fo"o`: "", "bar": "x"},
 			},
 			action: actionNode{`keep`},

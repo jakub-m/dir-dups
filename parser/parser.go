@@ -399,15 +399,20 @@ var NilMultiEvaluator = func(values []any) (AstNode, error) {
 	return NilAstNode, nil
 }
 
-func OnlyWithType[T any](values []any) T {
+func OneWithType[T any](values []any) T {
+	results := AllWithType[T](values)
+	if len(results) != 1 {
+		panic(fmt.Sprintf("expected exactly 1 value of type %+v, got %d", (*T)(nil), len(results)))
+	}
+	return results[0]
+}
+
+func AllWithType[T any](values []any) []T {
 	results := []T{}
 	for _, v := range values {
 		if t, ok := v.(T); ok {
 			results = append(results, t)
 		}
 	}
-	if len(results) != 1 {
-		panic(fmt.Sprintf("expected exactly 1 value of type %+v, got %d", (*T)(nil), len(results)))
-	}
-	return results[0]
+	return results
 }

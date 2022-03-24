@@ -72,13 +72,8 @@ func (e errorWithCursor) Error() string {
 	return e.message
 }
 
-type Evaluator interface {
-	Evaluate(AstNode) (AstNode, error)
-}
-
-type MultiEvaluator interface {
-	Evaluate([]AstNode) (AstNode, error)
-}
+type Evaluator = func(AstNode) (AstNode, error)
+type MultiEvaluator = func([]AstNode) (AstNode, error)
 
 // Below are the concrete tokenizers
 
@@ -106,7 +101,7 @@ func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor
 	if strings.HasPrefix(inputAtPosition, t.value) {
 		n := len(t.value)
 		lexeme := inputAtPosition[:n]
-		ast, err := t.evaluator.Evaluate(lexeme)
+		ast, err := t.evaluator(lexeme)
 		if err != nil {
 			return cur, nil, NewErrorWithCursor(cur, err.Error())
 		}
@@ -218,7 +213,7 @@ func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 		nodes = append(nodes, ast)
 		cur = nextCur
 	}
-	ast, err := t.evaluator.Evaluate(nodes)
+	ast, err := t.evaluator(nodes)
 	if err != nil {
 		return cur, nil, NewErrorWithCursor(cur, err.Error())
 	}
@@ -301,7 +296,7 @@ func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) 
 	if loc == nil || loc[0] != 0 {
 		return cur, nil, NewErrorWithCursor(cur, "expected regex %v", t.matcher)
 	}
-	ast, err := t.evaluator.Evaluate(in[loc[0]:loc[1]])
+	ast, err := t.evaluator(in[loc[0]:loc[1]])
 	if err != nil {
 		return cur, nil, NewErrorWithCursor(cur, err.Error())
 	}
@@ -355,21 +350,11 @@ func whiteSpace() Tokenizer {
 	}
 }
 
-var NilEvaluator = nilEvaluator{}
-
-type nilEvaluator struct {
-}
-
-func (e nilEvaluator) Evaluate(lexeme AstNode) (AstNode, error) {
+var NilEvaluator = func(lexeme AstNode) (AstNode, error) {
 	return NilAstNode, nil
 }
 
-var NilMultiEvaluator = nilMultiEvaluator{}
-
-type nilMultiEvaluator struct {
-}
-
-func (e nilMultiEvaluator) Evaluate(nodes []AstNode) (AstNode, error) {
+var NilMultiEvaluator = func(nodes []AstNode) (AstNode, error) {
 	return NilAstNode, nil
 }
 

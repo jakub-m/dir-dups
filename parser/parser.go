@@ -72,8 +72,8 @@ func (e errorWithCursor) Error() string {
 	return e.message
 }
 
-type Evaluator = func(AstNode) (AstNode, error)
-type MultiEvaluator = func([]AstNode) (AstNode, error)
+type Evaluator = func(any) (AstNode, error)
+type MultiEvaluator = func([]any) (AstNode, error)
 
 // Below are the concrete tokenizers
 
@@ -204,7 +204,7 @@ type SeqTokenizer struct {
 }
 
 func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
-	nodes := []AstNode{}
+	nodes := []any{}
 	for _, tok := range t.tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
 		if err != nil {
@@ -350,11 +350,11 @@ func whiteSpace() Tokenizer {
 	}
 }
 
-var NilEvaluator = func(lexeme AstNode) (AstNode, error) {
+var NilEvaluator = func(value any) (AstNode, error) {
 	return NilAstNode, nil
 }
 
-var NilMultiEvaluator = func(nodes []AstNode) (AstNode, error) {
+var NilMultiEvaluator = func(values []any) (AstNode, error) {
 	return NilAstNode, nil
 }
 

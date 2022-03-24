@@ -14,6 +14,10 @@ const (
 	ACTION_EXPR      = "ACTION_EXPR"
 )
 
+func IdentityEvaluator(value any) (AstNode, error) {
+	return value, nil
+}
+
 func getParser() Parser {
 	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER)
 	optionalAlias := Optional(
@@ -49,8 +53,8 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalKeep := Literal("keep").WithLabel(ACTION_TYPE)
-	literalMove := Literal("move").WithLabel(ACTION_TYPE)
+	literalKeep := Literal("keep").WithLabel(ACTION_TYPE).WithEvaluator(IdentityEvaluator)
+	literalMove := Literal("move").WithLabel(ACTION_TYPE).WithEvaluator(IdentityEvaluator)
 
 	actionSelector := OneOf(
 		literalKeep,

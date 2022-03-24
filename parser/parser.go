@@ -5,6 +5,7 @@ import (
 	"fmt"
 	coll "greasytoad/collections"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -337,8 +338,43 @@ func (t *RefTokenizer) Set(tok Tokenizer) {
 
 var _ Tokenizer = (*RefTokenizer)(nil)
 
-func QuotedString() *RegexTokenizer {
-	return Regex(`"(?:[^"\\]|\\.)*"`)
+func QuotedString() *QuotedStringTokenizer {
+	rt := Regex(`"(?:[^"\\]|\\.)*"`).WithEvaluator(func(s any) (any, error) {
+		return strconv.Unquote(s.(string))
+	})
+	return &QuotedStringTokenizer{rt: rt, ev: NilEvaluator}
+}
+
+type QuotedStringTokenizer struct {
+	rt *RegexTokenizer
+	ev Evaluator
+}
+
+func (t *QuotedStringTokenizer) Tokenize(cur Cursor) (Cursor, any, ErrorWithCursor) {
+	nextCur, ast, errWithCursor := t.rt.Tokenize(cur)
+	if errWithCursor != nil {
+		return cur, nil, errWithCursor
+	}
+	newAst, err := t.ev(ast)
+	if err != nil {
+		return cur, nil, NewErrorWithCursor(cur, err.Error())
+	}
+	return nextCur, newAst, nil
+
+}
+
+func (t *QuotedStringTokenizer) String() string {
+	return t.String()
+}
+
+func (t *QuotedStringTokenizer) WithLabel(label string) *QuotedStringTokenizer {
+	t.rt.WithLabel(label)
+	return t
+}
+
+func (t *QuotedStringTokenizer) WithEvaluator(ev Evaluator) *QuotedStringTokenizer {
+	t.ev = ev
+	return t
 }
 
 var WhiteSpace = whiteSpace()
@@ -360,7 +396,6 @@ var NilMultiEvaluator = func(values []any) (any, error) {
 	return NilAstNode, nil
 }
 
-// TODO make regular list on input
 func OnlyWithType[T any](values []any) T {
 	results := []T{}
 	for _, v := range values {

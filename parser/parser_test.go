@@ -122,7 +122,7 @@ type instructionNode struct {
 
 func TestParse(t *testing.T) {
 	p := getParser()
-	in := `if "foo" and "bar" as x then keep x`
+	in := `if "fo\"o" and "bar" as x then keep x`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
 	errString := ""
@@ -135,7 +135,7 @@ func TestParse(t *testing.T) {
 	assert.Equal(t,
 		instructionNode{
 			// TODO unquote
-			match:  matchNode{`"foo"`},
+			match:  matchNode{`fo"o`},
 			action: actionNode{`keep`},
 		},
 		root,

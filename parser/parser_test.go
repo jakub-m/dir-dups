@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+	"greasytoad/collections"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,15 +20,26 @@ func Identity(value any) (AstNode, error) {
 	return value, nil
 }
 
+func Collect(values []any) (AstNode, error) {
+	nodes := collections.FilterSlice(values, func(t any) bool {
+		return t != NilAstNode
+	})
+	if len(nodes) != 1 {
+		panic(fmt.Sprintf("expected exactly one non-nil node, got %d: %v", len(nodes), nodes))
+	}
+	return nodes[0], nil
+}
+
 func getParser() Parser {
-	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER)
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER).WithEvaluator(Identity)
+
 	optionalAlias := Optional(
 		Seq(
 			WhiteSpace,
 			Literal("as"),
 			WhiteSpace,
 			identifier,
-		),
+		).WithEvaluator(Collect),
 	)
 
 	pattern := QuotedString().WithLabel(PATH_PATTERN).WithEvaluator(Identity)
@@ -40,8 +53,13 @@ func getParser() Parser {
 
 	matchEvaluator := func(args []any) (AstNode, error) {
 		pattern := args[0].(string)
+		alias := ""
+		if args[1] != NilAstNode {
+			alias = args[1].(string)
+		}
+		_ = alias
 		m := make(map[string]string)
-		m[pattern] = "" // TODO handle alias here
+		m[pattern] = alias
 		return matchNode{m}, nil
 	}
 
@@ -56,13 +74,8 @@ func getParser() Parser {
 	).WithLabel(MATCH_EXPR)
 
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
-		// TODO handle the other args here!
 		m1 := args[0].(matchNode)
 		m2 := args[4].(matchNode)
-		// m.patternToAlias
-		// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
-		// m := make(map[string]string)
-		// m[pattern] = "" // TODO handle alias here
 		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
 	}
 
@@ -156,10 +169,9 @@ func TestParse(t *testing.T) {
 	assert.Equal(t,
 		instructionNode{
 			match: matchNode{
-				map[string]string{`fo"o`: "", "bar": ""},
-				//map[string]string{`fo"o`: "", "bar": "x"},
+				map[string]string{`fo"o`: "", "bar": "x"},
 			},
-			action: actionNode{`keep`},
+			action: actionNode{`keep`}, // TODO add x
 		},
 		root,
 	)

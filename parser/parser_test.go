@@ -36,7 +36,16 @@ func getParser() Parser {
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	).WithLabel(MATCH_EXPR).WithEvaluator(matchEvaluator)
+	).WithLabel(MATCH_EXPR)
+
+	matchEvaluator := func(args []any) (AstNode, error) {
+		pattern := args[0].(string)
+		m := make(map[string]string)
+		m[pattern] = "" // TODO handle alias here
+		return matchNode{m}, nil
+	}
+
+	matchExpr.WithEvaluator(matchEvaluator)
 
 	matchExprRecur := Seq(
 		matchExpr,
@@ -44,7 +53,19 @@ func getParser() Parser {
 		Literal("and"),
 		WhiteSpace,
 		conditionExprRef,
-	).WithLabel(MATCH_EXPR).WithEvaluator(matchRecurEvaluator)
+	).WithLabel(MATCH_EXPR)
+
+	matchRecurEvaluator := func(args []any) (AstNode, error) {
+		// TODO handle the other args here!
+		m := args[0].(matchNode)
+		// m.patternToAlias
+		// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
+		// m := make(map[string]string)
+		// m[pattern] = "" // TODO handle alias here
+		return matchNode{m.patternToAlias}, nil
+	}
+
+	matchExprRecur.WithEvaluator(matchRecurEvaluator)
 
 	conditionExpr := FirstOf(
 		matchExprRecur,
@@ -91,20 +112,8 @@ type actionNode struct {
 	// TODO add alias here
 }
 
-func matchEvaluator(args []any) (AstNode, error) {
-	pattern := args[0].(string)
-	return matchNode{pattern: pattern}, nil
-}
-
-func matchRecurEvaluator(args []any) (AstNode, error) {
-	// TODO handle the other args here!
-	m := args[0].(matchNode)
-	// TODO this is actuall wrong. we might want to have a single evaluator with all the patterns.
-	return matchNode{pattern: m.pattern}, nil
-}
-
 type matchNode struct {
-	pattern string
+	patternToAlias map[string]string
 	// TODO add optional alias
 }
 
@@ -134,7 +143,10 @@ func TestParse(t *testing.T) {
 
 	assert.Equal(t,
 		instructionNode{
-			match:  matchNode{`fo"o`},
+			match: matchNode{
+				map[string]string{`fo"o`: ""},
+				//map[string]string{`fo"o`: "", "bar": "x"},
+			},
 			action: actionNode{`keep`},
 		},
 		root,

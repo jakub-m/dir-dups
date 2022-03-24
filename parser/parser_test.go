@@ -110,8 +110,8 @@ type matchNode struct {
 
 func instructionEvaluator(args []any) (any, error) {
 	return instructionNode{
-		match:  OnlyWithType[matchNode](args...),
-		action: OnlyWithType[actionNode](args...),
+		match:  OnlyWithType[matchNode](args),
+		action: OnlyWithType[actionNode](args),
 	}, nil
 }
 
@@ -140,12 +140,4 @@ func TestParse(t *testing.T) {
 		},
 		root,
 	)
-}
-
-func TestOnlyWithType(t *testing.T) {
-	foo := []any{1123, "dupa", 1.123}
-	i := OnlyWithType[int](foo...)
-	assert.Equal(t, 1123, i)
-	s := OnlyWithType[string](foo...)
-	assert.Equal(t, "dupa", s)
 }

@@ -361,7 +361,7 @@ var NilMultiEvaluator = func(values []any) (any, error) {
 }
 
 // TODO make regular list on input
-func OnlyWithType[T any](values ...any) T {
+func OnlyWithType[T any](values []any) T {
 	results := []T{}
 	for _, v := range values {
 		if t, ok := v.(T); ok {

@@ -96,19 +96,22 @@ func getParser() Parser {
 		literalMove,
 	)
 
-	optionalActionAlias := Optional(identifier)
+	optionalActionAlias := Optional(
+		Seq(
+			WhiteSpace,
+			identifier,
+		).WithEvaluator(Collect))
 
 	actionExpr := Seq(
 		actionSelector,
-		WhiteSpace,
 		optionalActionAlias,
 	).WithLabel(ACTION_EXPR)
 
 	actionEvaluator := func(args []any) (AstNode, error) {
 		action := args[0].(string)
 		alias := ""
-		if args[2] != NilAstNode {
-			alias = args[2].(string)
+		if args[1] != NilAstNode {
+			alias = args[1].(string)
 		}
 		return actionNode{action: action, alias: alias}, nil
 	}

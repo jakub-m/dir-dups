@@ -102,7 +102,17 @@ func getParser() Parser {
 		actionSelector,
 		WhiteSpace,
 		optionalActionAlias,
-	).WithLabel(ACTION_EXPR).WithEvaluator(actionEvaluator)
+	).WithLabel(ACTION_EXPR)
+
+	actionEvaluator := func(args []any) (AstNode, error) {
+		action := args[0].(string)
+		alias := ""
+		if args[2] != NilAstNode {
+			alias = args[2].(string)
+		}
+		return actionNode{action: action, alias: alias}, nil
+	}
+	actionExpr.WithEvaluator(actionEvaluator)
 
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
@@ -116,19 +126,13 @@ func getParser() Parser {
 	return Parser{instructionTokenizer}
 }
 
-func actionEvaluator(args []any) (AstNode, error) {
-	action := args[0].(string)
-	return actionNode{action: action}, nil
-}
-
 type actionNode struct {
 	action string
-	// TODO add alias here
+	alias  string
 }
 
 type matchNode struct {
 	patternToAlias map[string]string
-	// TODO add optional alias
 }
 
 func instructionEvaluator(args []any) (AstNode, error) {
@@ -171,7 +175,7 @@ func TestParse(t *testing.T) {
 			match: matchNode{
 				map[string]string{`fo"o`: "", "bar": "x"},
 			},
-			action: actionNode{`keep`}, // TODO add x
+			action: actionNode{action: "keep", alias: "x"},
 		},
 		root,
 	)

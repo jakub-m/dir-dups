@@ -97,7 +97,7 @@ type LiteralTokenizer struct {
 	// value is the exact value to match
 	value     string
 	evaluator Evaluator
-	category  string
+	label     string
 }
 
 func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
@@ -120,7 +120,7 @@ func (t LiteralTokenizer) String() string {
 
 // TODO do we need label for anything
 func (t *LiteralTokenizer) WithLabel(c string) *LiteralTokenizer {
-	t.category = c
+	t.label = c
 	return t
 }
 
@@ -205,7 +205,6 @@ func Seq(tt ...Tokenizer) *SeqTokenizer {
 type SeqTokenizer struct {
 	tokenizers []Tokenizer
 	evaluator  MultiEvaluator
-	category   string
 }
 
 func (t SeqTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
@@ -229,11 +228,6 @@ func (t SeqTokenizer) String() string {
 	ts := coll.TransformSlice(t.tokenizers, func(t Tokenizer) string { return t.String() })
 	ts = coll.FilterSlice(ts, func(s string) bool { return s != "" })
 	return strings.Join(ts, " ")
-}
-
-func (t *SeqTokenizer) WithLabel(category string) *SeqTokenizer {
-	t.category = category
-	return t
 }
 
 func (t *SeqTokenizer) WithEvaluator(ev MultiEvaluator) *SeqTokenizer {
@@ -280,14 +274,14 @@ func Regex(pattern string) *RegexTokenizer {
 }
 
 type RegexTokenizer struct {
-	category  string
+	label     string
 	matcher   *regexp.Regexp
 	name      string
 	evaluator Evaluator
 }
 
-func (t *RegexTokenizer) WithLabel(category string) *RegexTokenizer {
-	t.category = category
+func (t *RegexTokenizer) WithLabel(label string) *RegexTokenizer {
+	t.label = label
 	return t
 }
 

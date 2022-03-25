@@ -11,9 +11,7 @@ import (
 const (
 	ALIAS_IDENTIFIER = "ASIAS_IDENTIFIER"
 	PATH_PATTERN     = "PATH_PATTERN"
-	MATCH_EXPR       = "MATCH_EXPR"
 	ACTION_TYPE      = "ACTION_TYPE"
-	ACTION_EXPR      = "ACTION_EXPR"
 )
 
 func Identity(value any) (AstNode, error) {
@@ -49,7 +47,7 @@ func getParser() Parser {
 	matchExpr := Seq(
 		pattern,
 		optionalAlias,
-	).WithLabel(MATCH_EXPR)
+	)
 
 	matchEvaluator := func(args []any) (AstNode, error) {
 		pattern := args[0].(string)
@@ -71,7 +69,7 @@ func getParser() Parser {
 		Literal("and"),
 		WhiteSpace,
 		conditionExprRef,
-	).WithLabel(MATCH_EXPR)
+	)
 
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
 		m1 := args[0].(matchNode)
@@ -105,7 +103,7 @@ func getParser() Parser {
 	actionExpr := Seq(
 		actionSelector,
 		optionalActionAlias,
-	).WithLabel(ACTION_EXPR)
+	)
 
 	actionEvaluator := func(args []any) (AstNode, error) {
 		action := args[0].(string)

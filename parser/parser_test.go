@@ -184,6 +184,10 @@ func TestParsers(t *testing.T) {
 		in string
 		ok bool
 	}{
+		// {
+		// 	in: `if "fo\"o" as y and "bar" as x then keep x and move y`,
+		// 	ok: true,
+		// },
 		{
 			in: `if "fo\"o" and "bar" as x then keep x`,
 			ok: true,
@@ -198,6 +202,10 @@ func TestParsers(t *testing.T) {
 		},
 		{
 			in: `"foo" as x then move y`,
+			ok: true,
+		},
+		{
+			in: `"foo" and "bar" and "quux" then move`,
 			ok: true,
 		},
 		{

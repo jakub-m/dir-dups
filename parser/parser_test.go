@@ -14,20 +14,6 @@ const (
 	ACTION_TYPE      = "ACTION_TYPE"
 )
 
-func Identity(value any) (AstNode, error) {
-	return value, nil
-}
-
-func NotNil(values []any) (AstNode, error) {
-	nodes := collections.FilterSlice(values, func(t any) bool {
-		return t != NilAstNode
-	})
-	if len(nodes) != 1 {
-		panic(fmt.Sprintf("expected exactly one non-nil node, got %d: %v", len(nodes), nodes))
-	}
-	return nodes[0], nil
-}
-
 func getParser() Parser {
 	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER).WithEvaluator(Identity)
 
@@ -115,6 +101,10 @@ func getParser() Parser {
 	}
 	actionExpr.WithEvaluator(actionEvaluator)
 
+	// actions := Seq(
+	// 	actionExpr,
+	// 	ZeroOrMore(Seq(Literal("and"), actionExpr).WithEvaluator(NotNil)))
+
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
 		conditionExpr,
@@ -184,10 +174,6 @@ func TestParsers(t *testing.T) {
 		in string
 		ok bool
 	}{
-		// {
-		// 	in: `if "fo\"o" as y and "bar" as x then keep x and move y`,
-		// 	ok: true,
-		// },
 		{
 			in: `if "fo\"o" and "bar" as x then keep x`,
 			ok: true,
@@ -212,16 +198,26 @@ func TestParsers(t *testing.T) {
 			in: `"foo" as x then mov y`,
 			ok: false,
 		},
+		{
+			in: `foo then move`,
+			ok: false,
+		},
+		// {
+		// 	in: `if "foo" as x and "bar" as y then keep x and move y`,
+		// 	ok: true,
+		// },
 	}
 	for _, tc := range tcs {
-		p := getParser()
-		ast, err := p.ParseString(tc.in)
-		if tc.ok {
-			assert.Nil(t, err, formatError(err))
-			assert.NotNil(t, ast, formatError(err))
-		} else {
-			assert.NotNil(t, err, formatError(err))
-		}
+		t.Run(tc.in, func(t *testing.T) {
+			p := getParser()
+			ast, err := p.ParseString(tc.in)
+			if tc.ok {
+				assert.Nil(t, err, formatError(err))
+				assert.NotNil(t, ast, formatError(err))
+			} else {
+				assert.NotNil(t, err, formatError(err))
+			}
+		})
 	}
 }
 
@@ -263,4 +259,18 @@ func Flatten(values []any) (AstNode, error) {
 		}
 	}
 	return flat, nil
+}
+
+func Identity(value any) (AstNode, error) {
+	return value, nil
+}
+
+func NotNil(values []any) (AstNode, error) {
+	nodes := collections.FilterSlice(values, func(t any) bool {
+		return t != NilAstNode
+	})
+	if len(nodes) != 1 {
+		panic(fmt.Sprintf("expected exactly one non-nil node, got %d: %v", len(nodes), nodes))
+	}
+	return nodes[0], nil
 }

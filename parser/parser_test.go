@@ -18,7 +18,7 @@ func Identity(value any) (AstNode, error) {
 	return value, nil
 }
 
-func Collect(values []any) (AstNode, error) {
+func NotNil(values []any) (AstNode, error) {
 	nodes := collections.FilterSlice(values, func(t any) bool {
 		return t != NilAstNode
 	})
@@ -37,7 +37,7 @@ func getParser() Parser {
 			Literal("as"),
 			WhiteSpace,
 			identifier,
-		).WithEvaluator(Collect),
+		).WithEvaluator(NotNil),
 	)
 
 	pattern := QuotedString().WithLabel(PATH_PATTERN).WithEvaluator(Identity)
@@ -98,7 +98,7 @@ func getParser() Parser {
 		Seq(
 			WhiteSpace,
 			identifier,
-		).WithEvaluator(Collect))
+		).WithEvaluator(NotNil))
 
 	actionExpr := Seq(
 		actionSelector,
@@ -229,10 +229,12 @@ func TestZeroOrMore(t *testing.T) {
 	x := Literal("x").WithEvaluator(Identity)
 	tok := Seq(
 		x,
-		ZeroOrMore(x).WithEvaluator(IdentitySlice),
+		ZeroOrMore(
+			Seq(WhiteSpace, x).WithEvaluator(NotNil),
+		).WithEvaluator(IdentitySlice),
 	).WithEvaluator(Flatten)
 	p := Parser{tok}
-	ast, err := p.ParseString("xxxxx")
+	ast, err := p.ParseString("x x x x x")
 	assert.Nil(t, err, formatError(err))
 	assert.Equal(t, []any{"x", "x", "x", "x", "x"}, ast)
 }

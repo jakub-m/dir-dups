@@ -225,10 +225,40 @@ func TestParsers(t *testing.T) {
 	}
 }
 
+func TestZeroOrMore(t *testing.T) {
+	x := Literal("x").WithEvaluator(Identity)
+	tok := Seq(
+		x,
+		ZeroOrMore(x).WithEvaluator(IdentitySlice),
+	).WithEvaluator(Flatten)
+	p := Parser{tok}
+	ast, err := p.ParseString("xxxxx")
+	assert.Nil(t, err, formatError(err))
+	assert.Equal(t, []any{"x", "x", "x", "x", "x"}, ast)
+}
+
 func formatError(err ErrorWithCursor) string {
 	errString := ""
 	if err != nil {
 		errString = "'" + err.Cursor().AtPos() + "'"
 	}
 	return errString
+}
+
+func IdentitySlice(values []any) (AstNode, error) {
+	return values, nil
+}
+
+func Flatten(values []any) (AstNode, error) {
+	flat := []any{}
+	for _, value := range values {
+		if arr, ok := value.([]any); ok {
+			for _, a := range arr {
+				flat = append(flat, a)
+			}
+		} else {
+			flat = append(flat, value)
+		}
+	}
+	return flat, nil
 }

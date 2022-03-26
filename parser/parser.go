@@ -261,6 +261,46 @@ func (t OptionalTokenizer) String() string {
 
 var _ Tokenizer = (*OptionalTokenizer)(nil)
 
+func ZeroOrMore(t Tokenizer) *ZeroOrMoreTokenizer {
+	return &ZeroOrMoreTokenizer{
+		tokenizer: t,
+		evaluator: NilMultiEvaluator,
+	}
+}
+
+type ZeroOrMoreTokenizer struct {
+	tokenizer Tokenizer
+	evaluator MultiEvaluator
+}
+
+func (t ZeroOrMoreTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	results := []any{}
+	for !cur.IsEnd() {
+		nextCur, ast, err := t.tokenizer.Tokenize(cur)
+		if err != nil {
+			break
+		}
+		results = append(results, ast)
+		cur = nextCur
+	}
+	ast, err := t.evaluator(results)
+	if err != nil {
+		return cur, ast, NewErrorWithCursor(cur, err.Error())
+	}
+	return cur, ast, nil
+}
+
+func (t ZeroOrMoreTokenizer) String() string {
+	return fmt.Sprintf("(%s)*", t.tokenizer)
+}
+
+func (t *ZeroOrMoreTokenizer) WithEvaluator(e MultiEvaluator) *ZeroOrMoreTokenizer {
+	t.evaluator = e
+	return t
+}
+
+var _ Tokenizer = (*ZeroOrMoreTokenizer)(nil)
+
 var NilAstNode = &nilAstNode{}
 
 type nilAstNode struct{}

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	ALIAS_IDENTIFIER = "ASIAS_IDENTIFIER"
+	ALIAS_IDENTIFIER = "ALIAS_IDENTIFIER"
 	PATH_PATTERN     = "PATH_PATTERN"
 	ACTION_TYPE      = "ACTION_TYPE"
 )
@@ -159,15 +159,12 @@ func mergeMaps[K comparable, V any](m1, m2 map[K]V) map[K]V {
 	return out
 }
 
-func TestParse(t *testing.T) {
+func TestConcreteParser(t *testing.T) {
 	p := getParser()
 	in := `if "fo\"o" and "bar" as x then keep x`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
-	errString := ""
-	if err != nil {
-		errString = "'" + err.Cursor().AtPos() + "'"
-	}
+	errString := formatError(err)
 	assert.Nil(t, err, errString)
 	// assert.Equal(t, len(in.Input), cursor.Position)
 
@@ -180,4 +177,50 @@ func TestParse(t *testing.T) {
 		},
 		root,
 	)
+}
+
+func TestParsers(t *testing.T) {
+	tcs := []struct {
+		in string
+		ok bool
+	}{
+		{
+			in: `if "fo\"o" and "bar" as x then keep x`,
+			ok: true,
+		},
+		{
+			in: `"foo" then move`,
+			ok: true,
+		},
+		{
+			in: `"foo then move`,
+			ok: false,
+		},
+		{
+			in: `"foo" as x then move y`,
+			ok: true,
+		},
+		{
+			in: `"foo" as x then mov y`,
+			ok: false,
+		},
+	}
+	for _, tc := range tcs {
+		p := getParser()
+		ast, err := p.ParseString(tc.in)
+		if tc.ok {
+			assert.Nil(t, err, formatError(err))
+			assert.NotNil(t, ast, formatError(err))
+		} else {
+			assert.NotNil(t, err, formatError(err))
+		}
+	}
+}
+
+func formatError(err ErrorWithCursor) string {
+	errString := ""
+	if err != nil {
+		errString = "'" + err.Cursor().AtPos() + "'"
+	}
+	return errString
 }

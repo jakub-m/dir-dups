@@ -6,6 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSeqFlattenNotNil(t *testing.T) {
+	x := Literal("x").Keep()
+	y := Literal("y")
+	xx := Seq(x, x)
+	tok := Seq(xx, y, xx, y).FlattenNonNil()
+	ast, err := Parser{tok}.ParseString("xxyxxy")
+	assert.NoError(t, err)
+	assert.Equal(t, []any{"x", "x", "x", "x"}, ast)
+}
+
 func TestZeroOrMore(t *testing.T) {
 	x := Literal("x").Keep()
 	tok := Seq(
@@ -39,22 +49,4 @@ func formatError(err ErrorWithCursor) string {
 		errString = "'" + err.Cursor().AtPos() + "'"
 	}
 	return errString
-}
-
-func IdentitySlice(values []any) (AstNode, error) {
-	return values, nil
-}
-
-func Flatten(values []any) (AstNode, error) {
-	flat := []any{}
-	for _, value := range values {
-		if arr, ok := value.([]any); ok {
-			for _, a := range arr {
-				flat = append(flat, a)
-			}
-		} else {
-			flat = append(flat, value)
-		}
-	}
-	return flat, nil
 }

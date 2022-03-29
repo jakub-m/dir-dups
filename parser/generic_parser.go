@@ -205,7 +205,7 @@ var _ Tokenizer = (*OneOfTokenizer)(nil)
 func Seq(tt ...Tokenizer) *SeqTokenizer {
 	return &SeqTokenizer{
 		tokenizers: tt,
-		evaluator:  NilMultiEvaluator,
+		evaluator:  IdentitySlice,
 	}
 }
 
@@ -242,7 +242,30 @@ func (t *SeqTokenizer) WithEvaluator(ev MultiEvaluator) *SeqTokenizer {
 	return t
 }
 
+// FlattenNonNil makes the tokenizer filter-out NilAstToken values, and then flatten the embedded slices.
+func (t *SeqTokenizer) FlattenNonNil() *SeqTokenizer {
+	t.evaluator = flattenNonNilEvaluator
+	return t
+}
+
 var _ Tokenizer = (*SeqTokenizer)(nil)
+
+func flattenNonNilEvaluator(input []any) (AstNode, error) {
+	flatten := []any{}
+	for _, v := range input {
+		if v != NilAstNode {
+			if arr, ok := v.([]any); ok {
+				for _, w := range arr {
+					flatten = append(flatten, w)
+				}
+			} else {
+				flatten = append(flatten, v)
+
+			}
+		}
+	}
+	return flatten, nil
+}
 
 func Optional(t Tokenizer) *OptionalTokenizer {
 	return &OptionalTokenizer{
@@ -462,6 +485,10 @@ func Identity(value any) (AstNode, error) {
 	return value, nil
 }
 
+func IdentitySlice(values []any) (AstNode, error) {
+	return values, nil
+}
+
 func NotNil(values []any) (AstNode, error) {
 	nodes := collections.FilterSlice(values, func(t any) bool {
 		return t != NilAstNode
@@ -470,4 +497,18 @@ func NotNil(values []any) (AstNode, error) {
 		panic(fmt.Sprintf("expected exactly one non-nil node, got %d: %v", len(nodes), nodes))
 	}
 	return nodes[0], nil
+}
+
+func Flatten(values []any) (AstNode, error) {
+	flat := []any{}
+	for _, value := range values {
+		if arr, ok := value.([]any); ok {
+			for _, a := range arr {
+				flat = append(flat, a)
+			}
+		} else {
+			flat = append(flat, value)
+		}
+	}
+	return flat, nil
 }

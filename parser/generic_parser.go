@@ -3,6 +3,7 @@ package parser
 
 import (
 	"fmt"
+	"greasytoad/collections"
 	coll "greasytoad/collections"
 	"regexp"
 	"strconv"
@@ -459,4 +460,14 @@ func AllWithType[T any](values []any) []T {
 
 func Identity(value any) (AstNode, error) {
 	return value, nil
+}
+
+func NotNil(values []any) (AstNode, error) {
+	nodes := collections.FilterSlice(values, func(t any) bool {
+		return t != NilAstNode
+	})
+	if len(nodes) != 1 {
+		panic(fmt.Sprintf("expected exactly one non-nil node, got %d: %v", len(nodes), nodes))
+	}
+	return nodes[0], nil
 }

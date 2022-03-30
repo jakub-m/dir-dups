@@ -89,7 +89,9 @@ func getParser() Parser {
 
 	actions := Seq(
 		actionExpr,
-		ZeroOrMore(Seq(WhiteSpace, Literal("and"), WhiteSpace, actionExpr).NonNil())).WithEvaluator(actionsEvaluator)
+		ZeroOrMore(
+			Seq(WhiteSpace, Literal("and"), WhiteSpace, actionExpr).NonNil()),
+	).WithEvaluator(actionsEvaluator)
 
 	instructionEvaluator := func(args []any) (AstNode, error) {
 		print(args)

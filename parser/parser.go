@@ -14,11 +14,6 @@ func getParser() Parser {
 
 	conditionExprRef := Ref()
 
-	matchExpr := Seq(
-		QuotedString().Keep(),
-		optionalAlias,
-	)
-
 	matchEvaluator := func(args []any) (AstNode, error) {
 		pattern := args[0].(string)
 		alias := ""
@@ -31,15 +26,10 @@ func getParser() Parser {
 		return matchNode{m}, nil
 	}
 
-	matchExpr.WithEvaluator(matchEvaluator)
-
-	matchExprRecur := Seq(
-		matchExpr,
-		WhiteSpace,
-		Literal("and"),
-		WhiteSpace,
-		conditionExprRef,
-	)
+	matchExpr := Seq(
+		QuotedString().Keep(),
+		optionalAlias,
+	).WithEvaluator(matchEvaluator)
 
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
 		m1 := args[0].(matchNode)
@@ -47,7 +37,13 @@ func getParser() Parser {
 		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
 	}
 
-	matchExprRecur.WithEvaluator(matchRecurEvaluator)
+	matchExprRecur := Seq(
+		matchExpr,
+		WhiteSpace,
+		Literal("and"),
+		WhiteSpace,
+		conditionExprRef,
+	).WithEvaluator(matchRecurEvaluator)
 
 	conditionExpr := FirstOf(
 		matchExprRecur,
@@ -67,11 +63,6 @@ func getParser() Parser {
 			identifier,
 		).NonNil())
 
-	actionExpr := Seq(
-		actionSelector,
-		optionalActionAlias,
-	)
-
 	actionEvaluator := func(args []any) (AstNode, error) {
 		action := args[0].(string)
 		alias := ""
@@ -80,7 +71,11 @@ func getParser() Parser {
 		}
 		return actionNode{action: action, alias: alias}, nil
 	}
-	actionExpr.WithEvaluator(actionEvaluator)
+
+	actionExpr := Seq(
+		actionSelector,
+		optionalActionAlias,
+	).WithEvaluator(actionEvaluator)
 
 	// actions := Seq(
 	// 	actionExpr,

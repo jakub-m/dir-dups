@@ -248,6 +248,12 @@ func (t *SeqTokenizer) FlattenNonNil() *SeqTokenizer {
 	return t
 }
 
+// NonNil makes the tokenizer filter-out NilAstToken values.
+func (t *SeqTokenizer) NonNil() *SeqTokenizer {
+	t.evaluator = NotNil
+	return t
+}
+
 var _ Tokenizer = (*SeqTokenizer)(nil)
 
 func flattenNonNilEvaluator(input []any) (AstNode, error) {

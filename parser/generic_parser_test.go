@@ -21,9 +21,9 @@ func TestZeroOrMore(t *testing.T) {
 	tok := Seq(
 		x,
 		ZeroOrMore(
-			Seq(WhiteSpace, x).WithEvaluator(NotNil),
+			Seq(WhiteSpace, x).NonNil(),
 		).WithEvaluator(IdentitySlice),
-	).WithEvaluator(Flatten)
+	).FlattenNonNil()
 	p := Parser{tok}
 	ast, err := p.ParseString("x x x x x")
 	assert.Nil(t, err, formatError(err))

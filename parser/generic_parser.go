@@ -482,7 +482,7 @@ var NilMultiEvaluator = func(values []any) (AstNode, error) {
 func OneWithType[T any](values []any) T {
 	results := AllWithType[T](values)
 	if len(results) != 1 {
-		panic(fmt.Sprintf("expected exactly 1 value of type %+v, got %d", (*T)(nil), len(results)))
+		panic(fmt.Sprintf("expected exactly 1 value of type %+v, got %d: %v", (*T)(nil), len(results), values))
 	}
 	return results[0]
 }

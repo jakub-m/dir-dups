@@ -29,20 +29,20 @@ func getParser() Parser {
 		optionalAlias,
 	).WithEvaluator(matchEvaluator)
 
+	matchExprRecurRef := Ref()
+
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
 		m1 := args[0].(matchNode)
 		m2 := args[4].(matchNode)
 		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
 	}
 
-	conditionExprRef := Ref()
-
 	matchExprRecur := Seq(
 		matchExpr,
 		WhiteSpace,
 		Literal("and"),
 		WhiteSpace,
-		conditionExprRef,
+		matchExprRecurRef,
 	).WithEvaluator(matchRecurEvaluator)
 
 	conditionExpr := FirstOf(
@@ -50,7 +50,7 @@ func getParser() Parser {
 		matchExpr,
 	)
 
-	conditionExprRef.Set(conditionExpr)
+	matchExprRecurRef.Set(conditionExpr)
 
 	actionSelector := OneOf(
 		Literal("keep").Keep(),
@@ -77,9 +77,9 @@ func getParser() Parser {
 		optionalActionAlias,
 	).WithEvaluator(actionEvaluator)
 
-	// actions := Seq(
-	// 	actionExpr,
-	// 	ZeroOrMore(Seq(Literal("and"), actionExpr).WithEvaluator(NotNil)))
+	actions := Seq(
+		actionExpr,
+		ZeroOrMore(Seq(Literal("and"), actionExpr).NonNil())).FlattenNonNil()
 
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
@@ -87,7 +87,7 @@ func getParser() Parser {
 		WhiteSpace,
 		Literal("then"),
 		WhiteSpace,
-		actionExpr,
+		actions,
 	).WithEvaluator(instructionEvaluator)
 
 	return Parser{instructionTokenizer}

@@ -7,7 +7,7 @@ const (
 )
 
 func getParser() Parser {
-	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).WithLabel(ALIAS_IDENTIFIER).WithEvaluator(Identity)
+	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).Keep()
 
 	optionalAlias := Optional(
 		Seq(
@@ -15,15 +15,13 @@ func getParser() Parser {
 			Literal("as"),
 			WhiteSpace,
 			identifier,
-		).WithEvaluator(NotNil),
+		).NonNil(),
 	)
-
-	pattern := QuotedString().WithLabel(PATH_PATTERN).WithEvaluator(Identity)
 
 	conditionExprRef := Ref()
 
 	matchExpr := Seq(
-		pattern,
+		QuotedString().Keep(),
 		optionalAlias,
 	)
 
@@ -64,19 +62,16 @@ func getParser() Parser {
 
 	conditionExprRef.Set(conditionExpr)
 
-	literalKeep := Literal("keep").WithLabel(ACTION_TYPE).WithEvaluator(Identity)
-	literalMove := Literal("move").WithLabel(ACTION_TYPE).WithEvaluator(Identity)
-
 	actionSelector := OneOf(
-		literalKeep,
-		literalMove,
+		Literal("keep").Keep(),
+		Literal("move").Keep(),
 	)
 
 	optionalActionAlias := Optional(
 		Seq(
 			WhiteSpace,
 			identifier,
-		).WithEvaluator(NotNil))
+		).NonNil())
 
 	actionExpr := Seq(
 		actionSelector,

@@ -366,6 +366,11 @@ func (t *RegexTokenizer) WithEvaluator(ev Evaluator) *RegexTokenizer {
 	return t
 }
 
+func (t *RegexTokenizer) Keep() *RegexTokenizer {
+	t.evaluator = Identity
+	return t
+}
+
 func (t RegexTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
 	in := cur.AtPos()
 	loc := t.matcher.FindStringIndex(in)
@@ -447,6 +452,11 @@ func (t *QuotedStringTokenizer) WithLabel(label string) *QuotedStringTokenizer {
 
 func (t *QuotedStringTokenizer) WithEvaluator(ev Evaluator) *QuotedStringTokenizer {
 	t.ev = ev
+	return t
+}
+
+func (t *QuotedStringTokenizer) Keep() *QuotedStringTokenizer {
+	t.ev = Identity
 	return t
 }
 

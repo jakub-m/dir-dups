@@ -20,7 +20,7 @@ func TestConcreteParser(t *testing.T) {
 			match: matchNode{
 				map[string]string{`fo"o`: "", "bar": "x"},
 			},
-			action: actionNode{action: "keep", alias: "x"},
+			actions: []actionNode{{action: "keep", alias: "x"}},
 		},
 		root,
 	)

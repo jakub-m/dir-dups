@@ -77,10 +77,27 @@ func getParser() Parser {
 		optionalActionAlias,
 	).WithEvaluator(actionEvaluator)
 
+	actionsEvaluator := func(args []any) (AstNode, error) {
+		nodes := []actionNode{}
+		for _, arg := range args {
+			if arg != NilAstNode {
+				nodes = append(nodes, arg.(actionNode))
+			}
+		}
+		return nodes, nil
+	}
+
 	actions := Seq(
 		actionExpr,
-		ZeroOrMore(Seq(Literal("and"), actionExpr).NonNil())).FlattenNonNil()
+		ZeroOrMore(Seq(WhiteSpace, Literal("and"), WhiteSpace, actionExpr).NonNil())).WithEvaluator(actionsEvaluator)
 
+	instructionEvaluator := func(args []any) (AstNode, error) {
+		print(args)
+		return instructionNode{
+			match:   OneWithType[matchNode](args),
+			actions: OneWithType[[]actionNode](args),
+		}, nil
+	}
 	instructionTokenizer := Seq(
 		Optional(Seq(Literal("if"), WhiteSpace)),
 		conditionExpr,
@@ -93,16 +110,9 @@ func getParser() Parser {
 	return Parser{instructionTokenizer}
 }
 
-func instructionEvaluator(args []any) (AstNode, error) {
-	return instructionNode{
-		match:  OneWithType[matchNode](args),
-		action: OneWithType[actionNode](args),
-	}, nil
-}
-
 type instructionNode struct {
-	match  matchNode
-	action actionNode
+	match   matchNode
+	actions []actionNode
 }
 
 type actionNode struct {

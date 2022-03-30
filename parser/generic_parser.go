@@ -341,6 +341,10 @@ var NilAstNode = &nilAstNode{}
 
 type nilAstNode struct{}
 
+func (n nilAstNode) String() string {
+	return "NilAstNode"
+}
+
 func Regex(pattern string) *RegexTokenizer {
 	return &RegexTokenizer{
 		matcher:   regexp.MustCompile(pattern),

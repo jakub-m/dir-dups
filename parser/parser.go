@@ -12,8 +12,6 @@ func getParser() Parser {
 		).NonNil(),
 	)
 
-	conditionExprRef := Ref()
-
 	matchEvaluator := func(args []any) (AstNode, error) {
 		pattern := args[0].(string)
 		alias := ""
@@ -36,6 +34,8 @@ func getParser() Parser {
 		m2 := args[4].(matchNode)
 		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
 	}
+
+	conditionExprRef := Ref()
 
 	matchExprRecur := Seq(
 		matchExpr,

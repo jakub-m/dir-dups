@@ -1,11 +1,5 @@
 package parser
 
-const (
-	ALIAS_IDENTIFIER = "ALIAS_IDENTIFIER"
-	PATH_PATTERN     = "PATH_PATTERN"
-	ACTION_TYPE      = "ACTION_TYPE"
-)
-
 func getParser() Parser {
 	identifier := Regex(`[a-zA-Z][a-zA-Z_0-9]*`).Keep()
 

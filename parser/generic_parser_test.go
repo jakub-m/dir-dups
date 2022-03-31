@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +47,5 @@ func formatError(err ErrorWithCursor) string {
 	if err == nil {
 		return ""
 	}
-
-	indicator := strings.Repeat(".", err.Cursor().Position) + "^"
-	return fmt.Sprintf("%s\n%s\n%s", err.Error(), err.Cursor().Input, indicator)
+	return err.Error()
 }

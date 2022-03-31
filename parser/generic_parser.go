@@ -73,8 +73,9 @@ func (e errorWithCursor) Cursor() Cursor {
 	return e.cur
 }
 
-func (e errorWithCursor) Error() string {
-	return e.message
+func (err errorWithCursor) Error() string {
+	indicator := strings.Repeat(".", err.Cursor().Position) + "^"
+	return fmt.Sprintf("%s\n%s\n%s", err.message, err.Cursor().Input, indicator)
 }
 
 type Evaluator = func(any) (AstNode, error)

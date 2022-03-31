@@ -3,6 +3,8 @@ package parser
 import (
 	"testing"
 
+	par "greasytoad/parser"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,4 +76,11 @@ func TestParsers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func formatError(err par.ErrorWithCursor) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

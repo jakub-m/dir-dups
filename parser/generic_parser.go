@@ -104,7 +104,6 @@ type LiteralTokenizer struct {
 	// value is the exact value to match
 	value     string
 	evaluator Evaluator
-	label     string
 }
 
 func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
@@ -123,12 +122,6 @@ func (t LiteralTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor
 
 func (t LiteralTokenizer) String() string {
 	return t.value
-}
-
-// TODO do we need label for anything
-func (t *LiteralTokenizer) WithLabel(c string) *LiteralTokenizer {
-	t.label = c
-	return t
 }
 
 var _ Tokenizer = (*LiteralTokenizer)(nil)
@@ -354,15 +347,9 @@ func Regex(pattern string) *RegexTokenizer {
 }
 
 type RegexTokenizer struct {
-	label     string
 	matcher   *regexp.Regexp
 	name      string
 	evaluator Evaluator
-}
-
-func (t *RegexTokenizer) WithLabel(label string) *RegexTokenizer {
-	t.label = label
-	return t
 }
 
 func (t *RegexTokenizer) WithEvaluator(ev Evaluator) *RegexTokenizer {
@@ -447,11 +434,6 @@ func (t *QuotedStringTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWith
 
 func (t *QuotedStringTokenizer) String() string {
 	return t.String()
-}
-
-func (t *QuotedStringTokenizer) WithLabel(label string) *QuotedStringTokenizer {
-	t.rt.WithLabel(label)
-	return t
 }
 
 func (t *QuotedStringTokenizer) WithEvaluator(ev Evaluator) *QuotedStringTokenizer {

@@ -17,10 +17,8 @@ func TestConcreteParser(t *testing.T) {
 
 	assert.Equal(t,
 		instructionNode{
-			match: matchNode{
-				map[string]string{`fo"o`: "", "bar": "x"},
-			},
-			actions: []actionNode{{action: "keep", alias: "x"}},
+			matches: []matchWithAlias{{match: `fo"o`, alias: ""}, {match: "bar", alias: "x"}},
+			actions: []actionForAlias{{action: "keep", alias: "x"}},
 		},
 		root,
 	)

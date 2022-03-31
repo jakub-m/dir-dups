@@ -19,9 +19,8 @@ func getParser() Parser {
 			alias = args[1].(string)
 		}
 		_ = alias
-		m := make(map[string]string)
-		m[pattern] = alias
-		return matchNode{m}, nil
+		m := []matchWithAlias{{match: pattern, alias: alias}}
+		return m, nil
 	}
 
 	matchExpr := Seq(
@@ -32,9 +31,10 @@ func getParser() Parser {
 	matchExprRecurRef := Ref()
 
 	matchRecurEvaluator := func(args []any) (AstNode, error) {
-		m1 := args[0].(matchNode)
-		m2 := args[4].(matchNode)
-		return matchNode{mergeMaps(m1.patternToAlias, m2.patternToAlias)}, nil
+		m1 := args[0].([]matchWithAlias)
+		m2 := args[4].([]matchWithAlias)
+		mm := append(m1, m2...)
+		return mm, nil
 	}
 
 	matchExprRecur := Seq(
@@ -69,7 +69,7 @@ func getParser() Parser {
 		if args[1] != NilAstNode {
 			alias = args[1].(string)
 		}
-		return actionNode{action: action, alias: alias}, nil
+		return actionForAlias{action: action, alias: alias}, nil
 	}
 
 	actionExpr := Seq(
@@ -78,10 +78,10 @@ func getParser() Parser {
 	).WithEvaluator(actionEvaluator)
 
 	actionsEvaluator := func(args []any) (AstNode, error) {
-		nodes := []actionNode{}
+		nodes := []actionForAlias{}
 		for _, arg := range args {
 			if arg != NilAstNode {
-				nodes = append(nodes, arg.(actionNode))
+				nodes = append(nodes, arg.(actionForAlias))
 			}
 		}
 		return nodes, nil
@@ -96,8 +96,8 @@ func getParser() Parser {
 	instructionEvaluator := func(args []any) (AstNode, error) {
 		print(args)
 		return instructionNode{
-			match:   OneWithType[matchNode](args),
-			actions: OneWithType[[]actionNode](args),
+			matches: OneWithType[[]matchWithAlias](args),
+			actions: OneWithType[[]actionForAlias](args),
 		}, nil
 	}
 	instructionTokenizer := Seq(
@@ -113,26 +113,16 @@ func getParser() Parser {
 }
 
 type instructionNode struct {
-	match   matchNode
-	actions []actionNode
+	matches []matchWithAlias
+	actions []actionForAlias
 }
 
-type actionNode struct {
+type actionForAlias struct {
 	action string
 	alias  string
 }
 
-type matchNode struct {
-	patternToAlias map[string]string
-}
-
-func mergeMaps[K comparable, V any](m1, m2 map[K]V) map[K]V {
-	out := make(map[K]V)
-	for k, v := range m1 {
-		out[k] = v
-	}
-	for k, v := range m2 {
-		out[k] = v
-	}
-	return out
+type matchWithAlias struct {
+	match string
+	alias string
 }

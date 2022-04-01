@@ -9,7 +9,7 @@ import (
 )
 
 func TestConcreteParser(t *testing.T) {
-	p := getParser()
+	p := GetMinilangParser()
 	in := `if "fo\"o" and "bar" as x then keep x`
 	root, err := p.ParseString(in)
 	assert.NotNil(t, root)
@@ -18,9 +18,9 @@ func TestConcreteParser(t *testing.T) {
 	// assert.Equal(t, len(in.Input), cursor.Position)
 
 	assert.Equal(t,
-		instructionNode{
-			matches: []matchWithAlias{{match: `fo"o`, alias: ""}, {match: "bar", alias: "x"}},
-			actions: []actionForAlias{{action: "keep", alias: "x"}},
+		InstructionNode{
+			Matches: []MatchWithAlias{{Match: `fo"o`, Alias: ""}, {Match: "bar", Alias: "x"}},
+			Actions: []ActionForAlias{{Action: "keep", Alias: "x"}},
 		},
 		root,
 	)
@@ -66,7 +66,7 @@ func TestParsers(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.in, func(t *testing.T) {
-			p := getParser()
+			p := GetMinilangParser()
 			ast, err := p.ParseString(tc.in)
 			if tc.ok {
 				assert.Nil(t, err, formatError(err))

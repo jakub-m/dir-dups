@@ -4,7 +4,7 @@ import (
 	par "greasytoad/parser"
 )
 
-func getParser() par.Parser {
+func GetMinilangParser() par.Parser {
 	identifier := par.Regex(`[a-zA-Z][a-zA-Z_0-9]*`).Keep()
 
 	optionalAlias := par.Optional(
@@ -23,7 +23,7 @@ func getParser() par.Parser {
 			alias = args[1].(string)
 		}
 		_ = alias
-		m := []matchWithAlias{{match: pattern, alias: alias}}
+		m := []MatchWithAlias{{Match: pattern, Alias: alias}}
 		return m, nil
 	}
 
@@ -35,8 +35,8 @@ func getParser() par.Parser {
 	matchExprRecurRef := par.Ref()
 
 	matchRecurEvaluator := func(args []any) (par.AstNode, error) {
-		m1 := args[0].([]matchWithAlias)
-		m2 := args[4].([]matchWithAlias)
+		m1 := args[0].([]MatchWithAlias)
+		m2 := args[4].([]MatchWithAlias)
 		mm := append(m1, m2...)
 		return mm, nil
 	}
@@ -73,7 +73,7 @@ func getParser() par.Parser {
 		if args[1] != par.NilAstNode {
 			alias = args[1].(string)
 		}
-		return actionForAlias{action: action, alias: alias}, nil
+		return ActionForAlias{Action: action, Alias: alias}, nil
 	}
 
 	actionExpr := par.Seq(
@@ -82,10 +82,10 @@ func getParser() par.Parser {
 	).WithEvaluator(actionEvaluator)
 
 	actionsEvaluator := func(args []any) (par.AstNode, error) {
-		nodes := []actionForAlias{}
+		nodes := []ActionForAlias{}
 		for _, arg := range args {
 			if arg != par.NilAstNode {
-				nodes = append(nodes, arg.(actionForAlias))
+				nodes = append(nodes, arg.(ActionForAlias))
 			}
 		}
 		return nodes, nil
@@ -99,9 +99,9 @@ func getParser() par.Parser {
 
 	instructionEvaluator := func(args []any) (par.AstNode, error) {
 		print(args)
-		return instructionNode{
-			matches: par.OneWithType[[]matchWithAlias](args),
-			actions: par.OneWithType[[]actionForAlias](args),
+		return InstructionNode{
+			Matches: par.OneWithType[[]MatchWithAlias](args),
+			Actions: par.OneWithType[[]ActionForAlias](args),
 		}, nil
 	}
 	instructionTokenizer := par.Seq(
@@ -116,17 +116,17 @@ func getParser() par.Parser {
 	return par.Parser{instructionTokenizer}
 }
 
-type instructionNode struct {
-	matches []matchWithAlias
-	actions []actionForAlias
+type InstructionNode struct {
+	Matches []MatchWithAlias
+	Actions []ActionForAlias
 }
 
-type actionForAlias struct {
-	action string
-	alias  string
+type ActionForAlias struct {
+	Action string
+	Alias  string
 }
 
-type matchWithAlias struct {
-	match string
-	alias string
+type MatchWithAlias struct {
+	Match string
+	Alias string
 }

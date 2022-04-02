@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"greasytoad/analyze"
+	"greasytoad/cleanup"
 	coll "greasytoad/collections"
 	libflag "greasytoad/flag"
 	"greasytoad/load"
@@ -81,7 +82,7 @@ func processListfilesToManifest(opts options) {
 		}
 		fileCount, size := -1, -1
 		for _, n := range nodes {
-			fmt.Fprintf(manifestFile, "%s\t%s\t%s\n", Keep, n.Hash, n.FullPath())
+			fmt.Fprintf(manifestFile, "%s\t%s\t%s\n", cleanup.Keep, n.Hash, n.FullPath())
 			if fileCount != -1 && fileCount != n.FileCount {
 				log.Fatalf("RATS! the nodes reported as similar but have different file counts: %v", nodes)
 			}
@@ -129,7 +130,7 @@ func transformManifestToBash(opts options) {
 	if err != nil {
 		log.Fatalf("template error: %v", err)
 	}
-	dataEntries := coll.TransformSlice(manifest, func(m ManifestEntry) DataEntry {
+	dataEntries := coll.TransformSlice(manifest, func(m cleanup.ManifestEntry) DataEntry {
 		return DataEntry{
 			ManifestEntry: m,
 			TargetPath:    path.Join(opts.targetPrefix, path.Dir(removeCommonPrefix(opts.targetPrefixToRemove, path.Clean(m.Path)))),
@@ -137,7 +138,7 @@ func transformManifestToBash(opts options) {
 	})
 
 	getTargetPath := func(s DataEntry) string { return s.TargetPath }
-	isMove := func(s DataEntry) bool { return s.Operation == Move }
+	isMove := func(s DataEntry) bool { return s.Operation == cleanup.Move }
 	err = tmpl.Execute(os.Stdout, Data{
 		UseCpRm:     opts.useCopyRemove,
 		Entries:     dataEntries,
@@ -155,14 +156,14 @@ type Data struct {
 }
 
 type DataEntry struct {
-	ManifestEntry
+	cleanup.ManifestEntry
 	TargetPath string
 }
 
-func verifyOneKeepPerHash(manifest Manifest) {
+func verifyOneKeepPerHash(manifest cleanup.Manifest) {
 	hashHasKeep := make(map[string]bool)
 	for _, m := range manifest {
-		hashHasKeep[m.Hash] = hashHasKeep[m.Hash] || (m.Operation == Keep)
+		hashHasKeep[m.Hash] = hashHasKeep[m.Hash] || (m.Operation == cleanup.Keep)
 	}
 	shouldFail := false
 	for h, b := range hashHasKeep {
@@ -176,7 +177,7 @@ func verifyOneKeepPerHash(manifest Manifest) {
 	}
 }
 
-func verifyPathCommonPrefix(manifest Manifest, prefix string) {
+func verifyPathCommonPrefix(manifest cleanup.Manifest, prefix string) {
 	if prefix == "" {
 		return
 	}
@@ -202,9 +203,9 @@ func removeCommonPrefix(prefix string, pathToModify string) string {
 
 var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
 
-func parseManifest(r io.Reader) (Manifest, error) {
+func parseManifest(r io.Reader) (cleanup.Manifest, error) {
 	log.Debugf("parseManifest: r=%v", r)
-	manifest := Manifest{}
+	manifest := cleanup.Manifest{}
 	s := bufio.NewScanner(r)
 	nLine := 0
 	for s.Scan() {
@@ -217,33 +218,18 @@ func parseManifest(r io.Reader) (Manifest, error) {
 		if submatches == nil {
 			return manifest, fmt.Errorf("illegal line %d: '%s'", nLine, line)
 		}
-		me := ManifestEntry{
-			Operation: ManifestOperation(submatches[1]),
+		me := cleanup.ManifestEntry{
+			Operation: cleanup.ManifestOperation(submatches[1]),
 			Hash:      submatches[2],
 			Path:      submatches[3],
 		}
 		manifest = append(manifest, me)
 	}
 	if err := s.Err(); err != nil {
-		return Manifest{}, fmt.Errorf("Error around line %d: %v", nLine, err)
+		return cleanup.Manifest{}, fmt.Errorf("Error around line %d: %v", nLine, err)
 	}
 	return manifest, nil
 }
-
-type Manifest []ManifestEntry
-
-type ManifestEntry struct {
-	Operation ManifestOperation
-	Hash      string
-	Path      string
-}
-
-type ManifestOperation string
-
-const (
-	Keep ManifestOperation = "keep"
-	Move                   = "move"
-)
 
 //go:embed bash.gotemplate
 var templateBody string

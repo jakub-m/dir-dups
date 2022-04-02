@@ -1,4 +1,4 @@
-package minilang
+package cleanup
 
 import (
 	"strings"

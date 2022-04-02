@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -14,10 +13,8 @@ import (
 	"greasytoad/load"
 	"greasytoad/log"
 	"greasytoad/strings"
-	"io"
 	"os"
 	"path"
-	"regexp"
 	gostrings "strings"
 	"text/template"
 )
@@ -118,7 +115,7 @@ func transformManifestToBash(opts options) {
 		defer manifestFile.Close()
 	}
 
-	manifest, err := parseManifest(manifestFile)
+	manifest, err := cleanup.ParseManifest(manifestFile)
 	if err != nil {
 		log.Fatalf("failed to parse manifest %s: %v", opts.manifestFile, err)
 	}
@@ -199,36 +196,6 @@ func removeCommonPrefix(prefix string, pathToModify string) string {
 		return cleanPath[len(cleanPrefix):]
 	}
 	return pathToModify
-}
-
-var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
-
-func parseManifest(r io.Reader) (cleanup.Manifest, error) {
-	log.Debugf("parseManifest: r=%v", r)
-	manifest := cleanup.Manifest{}
-	s := bufio.NewScanner(r)
-	nLine := 0
-	for s.Scan() {
-		nLine++
-		line := s.Text()
-		if gostrings.HasPrefix(line, "#") {
-			continue
-		}
-		submatches := manifestLineRegex.FindStringSubmatch(line)
-		if submatches == nil {
-			return manifest, fmt.Errorf("illegal line %d: '%s'", nLine, line)
-		}
-		me := cleanup.ManifestEntry{
-			Operation: cleanup.ManifestOperation(submatches[1]),
-			Hash:      submatches[2],
-			Path:      submatches[3],
-		}
-		manifest = append(manifest, me)
-	}
-	if err := s.Err(); err != nil {
-		return cleanup.Manifest{}, fmt.Errorf("Error around line %d: %v", nLine, err)
-	}
-	return manifest, nil
 }
 
 //go:embed bash.gotemplate

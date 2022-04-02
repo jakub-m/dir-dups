@@ -4,33 +4,12 @@ import (
 	"bufio"
 	"greasytoad/cleanup/parser"
 	"io"
-	"io/ioutil"
 	"strings"
 )
 
-func ProcessManifest(minilangReader io.Reader, inputReader io.Reader) (string, error) {
-	mil, err := parserMinilang(minilangReader)
-	inputBytes, err := ioutil.ReadAll(inputReader)
-	if err != nil {
-		return "", err
-	}
-	input := string(inputBytes)
+type Script []parser.InstructionNode
 
-	_ = mil
-	_ = input
-	return "", nil
-	// hashGroups := collectHashGroups(input)
-
-	// The processing is as follows:
-	// - Read the input lines and collect the lines into "hash groups". A hash group is a set of lines from the input manifest with the same hash.
-	// - Infer new actions per hash group.
-	// - Again iterate through input lines, and modity them accorting to the actions inferred in the previous step.
-	//
-	// Inferring actions per hash group works as follows:
-	// - check if hashgroup matches all the expressions. If so, apply the mapping.
-}
-
-func parserMinilang(r io.Reader) (minilangInstruction, error) {
+func ReadScript(r io.Reader) (Script, error) {
 	par := parser.GetMinilangParser()
 	scanner := bufio.NewScanner(r)
 	mi := []parser.InstructionNode{}
@@ -52,7 +31,27 @@ func parserMinilang(r io.Reader) (minilangInstruction, error) {
 	return mi, nil
 }
 
-type minilangInstruction []parser.InstructionNode
+// func ProcessManifest(minilangReader io.Reader, inputReader io.Reader) (string, error) {
+// 	mil, err := parserMinilang(minilangReader)
+// 	inputBytes, err := ioutil.ReadAll(inputReader)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	input := string(inputBytes)
+
+// 	_ = mil
+// 	_ = input
+// 	return "", nil
+// 	// hashGroups := collectHashGroups(input)
+
+// 	// The processing is as follows:
+// 	// - Read the input lines and collect the lines into "hash groups". A hash group is a set of lines from the input manifest with the same hash.
+// 	// - Infer new actions per hash group.
+// 	// - Again iterate through input lines, and modity them accorting to the actions inferred in the previous step.
+// 	//
+// 	// Inferring actions per hash group works as follows:
+// 	// - check if hashgroup matches all the expressions. If so, apply the mapping.
+// }
 
 // func (mi minilangInstruction) process(r io.Reader) (string, error) {
 // 	out := &strings.Builder{}

@@ -9,24 +9,7 @@ import (
 	gostrings "strings"
 )
 
-type Manifest []ManifestEntry
-
-type ManifestEntry struct {
-	Operation ManifestOperation
-	Hash      string
-	Path      string
-}
-
-type ManifestOperation string
-
-const (
-	Keep ManifestOperation = "keep"
-	Move                   = "move"
-)
-
-var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
-
-func ParseManifest(r io.Reader) (Manifest, error) {
+func ReadManifest(r io.Reader) (Manifest, error) {
 	manifest := Manifest{}
 	s := bufio.NewScanner(r)
 	nLine := 0
@@ -36,14 +19,9 @@ func ParseManifest(r io.Reader) (Manifest, error) {
 		if gostrings.HasPrefix(line, "#") {
 			continue
 		}
-		submatches := manifestLineRegex.FindStringSubmatch(line)
-		if submatches == nil {
+		me, err := ParseLineToManifestEntry(line)
+		if err != nil {
 			return manifest, fmt.Errorf("illegal line %d: '%s'", nLine, line)
-		}
-		me := ManifestEntry{
-			Operation: ManifestOperation(submatches[1]),
-			Hash:      submatches[2],
-			Path:      submatches[3],
 		}
 		manifest = append(manifest, me)
 	}
@@ -52,3 +30,37 @@ func ParseManifest(r io.Reader) (Manifest, error) {
 	}
 	return manifest, nil
 }
+
+func ParseLineToManifestEntry(line string) (ManifestEntry, error) {
+	submatches := manifestLineRegex.FindStringSubmatch(line)
+	if submatches == nil {
+		return ManifestEntry{}, fmt.Errorf("not a manifest entry")
+	}
+	me := ManifestEntry{
+		Operation: ManifestOperation(submatches[1]),
+		Hash:      submatches[2],
+		Path:      submatches[3],
+	}
+	return me, nil
+}
+
+var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
+
+type Manifest []ManifestEntry
+
+type ManifestEntry struct {
+	Operation ManifestOperation
+	Hash      string
+	Path      string
+}
+
+func (me ManifestEntry) String() string {
+	return fmt.Sprintf("%s\t%s\t%s", me.Operation, me.Hash, me.Path)
+}
+
+type ManifestOperation string
+
+const (
+	Keep ManifestOperation = "keep"
+	Move                   = "move"
+)

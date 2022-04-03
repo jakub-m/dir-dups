@@ -115,7 +115,7 @@ func transformManifestToBash(opts options) {
 		defer manifestFile.Close()
 	}
 
-	manifest, err := cleanup.ParseManifest(manifestFile)
+	manifest, err := cleanup.ReadManifest(manifestFile)
 	if err != nil {
 		log.Fatalf("failed to parse manifest %s: %v", opts.manifestFile, err)
 	}

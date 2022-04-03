@@ -122,6 +122,7 @@ type InstructionNode struct {
 }
 
 type ActionForAlias struct {
+	// Action TODO: this should be actually ManifestOperation, not a string
 	Action string
 	Alias  string
 }

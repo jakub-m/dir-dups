@@ -24,10 +24,10 @@ if "foo" and "bar" as x then move x
 	err = ProcessManifestWithScript(strings.NewReader(manifestString), script, out)
 	assert.NoError(t, err)
 
-	expected := `
+	expected := `#
 keep	h111	foo
 move	h111	bar
 keep	h111	baz
-	`
+`
 	assert.Equal(t, expected, out.String())
 }

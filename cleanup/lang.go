@@ -57,13 +57,14 @@ func ProcessManifestWithScript(r io.Reader, script Script, w io.Writer) error {
 		line := scanner.Text()
 		me, err := ParseLineToManifestEntry(strings.TrimSpace(line))
 		if err != nil {
-			fmt.Fprint(w, line)
+			fmt.Fprintln(w, line)
+			continue
 		}
 		me, err = applyScriptToManifestEntry(script, me, hg)
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(w, me.String())
+		fmt.Fprintln(w, me.String())
 	}
 
 	return nil
@@ -170,7 +171,7 @@ func getEntryWithSamePath(needle ManifestEntry, haystack []ManifestEntry) Manife
 			return hay
 		}
 	}
-	panic(fmt.Sprintf("BUG. No needle in haystack. %v, %v", needle, haystack))
+	panic(fmt.Sprintf("BUG. No needle in haystack. needle: %v, haystack: %v", needle, haystack))
 }
 
 func strip(s string) string {

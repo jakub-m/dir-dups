@@ -8,7 +8,7 @@ import (
 )
 
 func TestMinlang(t *testing.T) {
-	manifestString := `
+	manifestString := `#
 keep	h111	foo
 keep	h111	bar
 keep	h111	baz

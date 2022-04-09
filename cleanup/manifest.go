@@ -4,6 +4,7 @@ import (
 	"bufio"
 	_ "embed"
 	"fmt"
+	"greasytoad/cleanup/parser"
 	"io"
 	"regexp"
 	gostrings "strings"
@@ -37,7 +38,7 @@ func ParseLineToManifestEntry(line string) (ManifestEntry, error) {
 		return ManifestEntry{}, fmt.Errorf("not a manifest entry")
 	}
 	me := ManifestEntry{
-		Operation: ManifestOperation(submatches[1]),
+		Operation: parser.ManifestOperation(submatches[1]),
 		Hash:      submatches[2],
 		Path:      submatches[3],
 	}
@@ -49,7 +50,7 @@ var manifestLineRegex = regexp.MustCompile(`^(keep|move)\t(\S+)\t(.+)$`)
 type Manifest []ManifestEntry
 
 type ManifestEntry struct {
-	Operation ManifestOperation
+	Operation parser.ManifestOperation
 	Hash      string
 	Path      string
 }
@@ -57,10 +58,3 @@ type ManifestEntry struct {
 func (me ManifestEntry) String() string {
 	return fmt.Sprintf("%s\t%s\t%s", me.Operation, me.Hash, me.Path)
 }
-
-type ManifestOperation string
-
-const (
-	Keep ManifestOperation = "keep"
-	Move                   = "move"
-)

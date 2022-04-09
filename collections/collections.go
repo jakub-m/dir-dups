@@ -53,3 +53,15 @@ func ReverseSlice[T any](slice []T) {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 }
+
+func Deduplicate[T comparable](values []T) []T {
+	set := make(map[T]bool)
+	for _, val := range values {
+		set[val] = true
+	}
+	out := []T{}
+	for val := range set {
+		out = append(out, val)
+	}
+	return out
+}

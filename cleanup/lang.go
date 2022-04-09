@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"fmt"
 	"greasytoad/cleanup/parser"
+	"greasytoad/collections"
 	"io"
+	"log"
 	"strings"
 )
 
@@ -83,19 +85,29 @@ func collectHashGroups(mes []ManifestEntry) map[string][]ManifestEntry {
 }
 
 func applyScriptToManifestEntry(script Script, me ManifestEntry, hashGroups map[string][]ManifestEntry) (ManifestEntry, error) {
-	entries := hashGroups[me.Hash]
+	// OK:
+	// 1. Many instructions of the Script match the entires
+	// 2. Different instructions in the script apply actions to ManifestEntries
+	// NOT OK:
+	// 3. Contradictory actions for a ManifestEntry
+
+	entriesSameHash := hashGroups[me.Hash]
 
 	resultEntry := me
-	matchingInstructions := make(map[ManifestOperation]instruction)
+	matchingInstructions := make(map[parser.ManifestOperation]instruction)
 
 	for _, inst := range script {
-		if result, err := inst.apply(entries); err == nil {
-			modified := getEntryWithSamePath(me, result)
-			resultEntry = modified
-			matchingInstructions[modified.Operation] = inst
-			if len(matchingInstructions) > 1 {
-				// TODO add error message with the offending instructions taken from inst
-				return me, fmt.Errorf("single manifest entry matched two contradictory instructions: %v", matchingInstructions)
+		if modifiedEntries, err := inst.apply(entriesSameHash); err == nil {
+			if modified, ok := getEntryWithSamePath(me, modifiedEntries); ok {
+				resultEntry = modified
+				matchingInstructions[modified.Operation] = inst
+				if len(matchingInstructions) > 1 {
+					lines := []string{}
+					for _, mi := range matchingInstructions {
+						lines = append(lines, mi.line)
+					}
+					return me, fmt.Errorf("single manifest entry matched contradictory instructions:\n%s\n%s", me, strings.Join(lines, "\n"))
+				}
 			}
 		} else {
 			return me, err
@@ -111,67 +123,74 @@ type instruction struct {
 	line  string
 }
 
+// apply returns those input Manifest entires that an action was executed upon.
 func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
-	mentAlias := make(map[ManifestEntry]string)
+	if !collections.All(ments, func(m ManifestEntry) bool { return m.Hash == ments[0].Hash }) {
+		log.Fatalf("RATS! Assumed that manifest entries have the same hash: %v", ments)
+	}
 
-	// process matches
+	// Go through all the parts of the match expression and map the matches to aliases (if there is an alias).
+	// All of the parts of the match expression must have a matching ManiestEntry.
+	type mentWithAlias struct {
+		ment  ManifestEntry
+		alias string
+	}
+	matchingEntries := []mentWithAlias{}
 	for _, matchWithAlias := range s.inode.Matches {
-		// all matches must match some path in ManifestEntries
-		hasMatch := false
+		manifestEntryHasMatch := false
 		for _, ment := range ments {
 			if strings.Contains(ment.Path, matchWithAlias.Match) {
-				hasMatch = true
-				if matchWithAlias.Alias != "" {
-					if alias := mentAlias[ment]; alias != "" && alias != matchWithAlias.Alias {
-						return ments, fmt.Errorf(`single path "%s" matching two different aliases: "%s" and "%s"`, ment.Path, alias, matchWithAlias.Alias)
-					}
-					mentAlias[ment] = matchWithAlias.Alias
-				}
+				matchingEntries = append(matchingEntries, mentWithAlias{
+					ment:  ment,
+					alias: matchWithAlias.Alias,
+				})
+				manifestEntryHasMatch = true
 				break
 			}
 		}
-		if !hasMatch {
-			// some match string was not a part of any path. this is ok. abort
-			return ments, nil
+		if !manifestEntryHasMatch {
+			// some manifest entry did not have a match. It's ok.
+			return []ManifestEntry{}, nil
 		}
 	}
 
-	// apply actions to aliases
-	result := []ManifestEntry{}
-	for _, me := range ments {
-		alias, ok := mentAlias[me]
-		if !ok {
-			result = append(result, me)
-			continue
-		}
-
-		for _, action := range s.inode.Actions {
-			if action.Alias == alias {
-				result = append(result, ManifestEntry{
-					Operation: ManifestOperation(action.Action),
-					Hash:      me.Hash,
-					Path:      me.Path,
-				})
-				continue
+	// Now apply actions to aliases
+	mentsWithAppliedActions := []ManifestEntry{}
+	for _, action := range s.inode.Actions {
+		for _, mentWithAlias := range matchingEntries {
+			if action.Alias != "" && action.Alias == mentWithAlias.alias {
+				m := mentWithAlias.ment
+				m.Operation = action.Action
+				mentsWithAppliedActions = append(mentsWithAppliedActions, m)
 			}
 		}
-
-		result = append(result, me)
 	}
 
+	// Figure if the same manifest entry got two distinct actions. If yes then return an error, if no, then return de-duplicated list of manifest entries.
+	result := []ManifestEntry{}
+	for _, ment := range ments {
+		matchingMents := collections.FilterSlice(mentsWithAppliedActions, func(ma ManifestEntry) bool { return ma.Path == ment.Path })
+		matchingMents = collections.Deduplicate(matchingMents)
+		if len(matchingMents) > 1 {
+			return ments, fmt.Errorf(`single instruction "%s" produced contradictory actions: %v`, s.line, matchingMents)
+		}
+		if len(matchingMents) == 1 {
+			result = append(result, matchingMents[0])
+		}
+	}
 	return result, nil
 }
 
-func getEntryWithSamePath(needle ManifestEntry, haystack []ManifestEntry) ManifestEntry {
+func getEntryWithSamePath(needle ManifestEntry, haystack []ManifestEntry) (ManifestEntry, bool) {
 	for _, hay := range haystack {
 		if needle.Hash != hay.Hash {
 			panic(fmt.Sprintf("BUG. Assumed that needle and haystack have the same hash. %v, %v", needle, haystack))
 		}
 		if needle.Path == hay.Path {
-			return hay
+			return hay, true
 		}
 	}
-	panic(fmt.Sprintf("BUG. No needle in haystack. needle: %v, haystack: %v", needle, haystack))
+	return needle, false
 }
 
 func strip(s string) string {

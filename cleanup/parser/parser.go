@@ -73,7 +73,7 @@ func GetMinilangParser() par.Parser {
 		if args[1] != par.NilAstNode {
 			alias = args[1].(string)
 		}
-		return ActionForAlias{Action: action, Alias: alias}, nil
+		return ActionForAlias{Action: ManifestOperation(action), Alias: alias}, nil
 	}
 
 	actionExpr := par.Seq(
@@ -122,8 +122,7 @@ type InstructionNode struct {
 }
 
 type ActionForAlias struct {
-	// Action TODO: this should be actually ManifestOperation, not a string
-	Action string
+	Action ManifestOperation
 	Alias  string
 }
 
@@ -131,3 +130,10 @@ type MatchWithAlias struct {
 	Match string
 	Alias string
 }
+
+type ManifestOperation string
+
+const (
+	Keep ManifestOperation = "keep"
+	Move                   = "move"
+)

@@ -87,10 +87,31 @@ move	h333	axx
 keep	h333	bxx
 `,
 		},
+		{
+			name: "f",
+			in: `#
+keep	h111	a1
+keep	h111	a2
+keep	h111	b1
+keep	h111	b2
+`,
+			script: `
+if "b" as x then move x
+`,
+			out: `#
+keep	h111	a1
+keep	h111	a2
+move	h111	b1
+move	h111	b2
+`,
+		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			// if tc.name != "f" {
+			// 	return
+			// }
 			out := &strings.Builder{}
 
 			script, err := ReadScript(strings.NewReader(tc.script))

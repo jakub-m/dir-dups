@@ -145,7 +145,6 @@ func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
 					alias: matchWithAlias.Alias,
 				})
 				manifestEntryHasMatch = true
-				break
 			}
 		}
 		if !manifestEntryHasMatch {

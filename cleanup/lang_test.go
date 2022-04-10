@@ -64,6 +64,29 @@ move	h111	bar
 keep	h111	baz
 `,
 		},
+		{
+			name: "e",
+			in: `#
+keep	h111	aaa
+keep	h111	bbb
+move	h222	ccc
+move	h222	ddd
+keep	h333	axx
+keep	h333	bxx
+`,
+			script: `
+if "a" as x then move x
+if "aaa" as x and "bbb" as y then keep y
+`,
+			out: `#
+move	h111	aaa
+keep	h111	bbb
+move	h222	ccc
+move	h222	ddd
+move	h333	axx
+keep	h333	bxx
+`,
+		},
 	}
 
 	for _, tc := range tcs {

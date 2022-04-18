@@ -200,5 +200,4 @@ func strip(s string) string {
 	return s
 }
 
-// TODO when parsing manifest with the script, at the end check if there is at least one keep in hash group
-// TOOD when there is only one matching expression, support default (but only then)
+// TODO when there is only one matching expression, support default (but only then)

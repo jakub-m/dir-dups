@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -123,9 +124,15 @@ func transformManifestWithScript(opts options) {
 		defer manifestReader.Close()
 	}
 
-	err = cleanup.ProcessManifestWithScript(manifestReader, script, os.Stdout)
+	var outBuf bytes.Buffer
+	outTee := io.MultiWriter(&outBuf, os.Stdout)
+	err = cleanup.ProcessManifestWithScript(manifestReader, script, outTee)
 	if err != nil {
-		log.Fatalf("error pocessing manifest: %s", err)
+		log.Fatalf("error processing manifest: %s", err)
+	}
+	err = CheckAtLeastOneKeep(&outBuf)
+	if err != nil {
+		log.Fatalf("%s", err)
 	}
 }
 
@@ -245,4 +252,35 @@ func loadManifestFromFile(path string) (cleanup.Manifest, error) {
 	}
 
 	return cleanup.ReadManifest(manifestFile)
+}
+
+// CheckAtLeastOneKeep returns an error if there is a hash group that does not have a "keep" action.
+func CheckAtLeastOneKeep(r io.Reader) error {
+	buf, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	manifest, err := cleanup.ReadManifest(bytes.NewReader(buf))
+	if err != nil {
+		return err
+	}
+	operationsPerHash := make(map[string]map[parser.ManifestOperation]bool)
+	for _, me := range manifest {
+		if _, ok := operationsPerHash[me.Hash]; !ok {
+			operationsPerHash[me.Hash] = make(map[parser.ManifestOperation]bool)
+		}
+		operationsPerHash[me.Hash][me.Operation] = true
+	}
+
+	_, err = cleanup.ReadManifestCallPerLine(bytes.NewReader(buf), func(nLine int, line string, me cleanup.ManifestEntry) error {
+		operations := operationsPerHash[me.Hash]
+		if operations == nil || len(operations) < 1 {
+			panic("RATS! missing operations in map.")
+		}
+		if len(operations) == 1 && operations[parser.Move] {
+			return fmt.Errorf(`Line %d: %s\nThere should be at least one "keep" operation for this hash, but wouldn't. Correct the script and try again.`, nLine, line)
+		}
+		return nil
+	})
+	return err
 }

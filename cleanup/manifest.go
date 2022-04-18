@@ -11,6 +11,10 @@ import (
 )
 
 func ReadManifest(r io.Reader) (Manifest, error) {
+	return ReadManifestCallPerLine(r, func(i int, s string, me ManifestEntry) error { return nil })
+}
+
+func ReadManifestCallPerLine(r io.Reader, callback func(nLine int, line string, me ManifestEntry) error) (Manifest, error) {
 	manifest := Manifest{}
 	s := bufio.NewScanner(r)
 	nLine := 0
@@ -23,6 +27,9 @@ func ReadManifest(r io.Reader) (Manifest, error) {
 		me, err := ParseLineToManifestEntry(line)
 		if err != nil {
 			return manifest, fmt.Errorf("illegal line %d: '%s'", nLine, line)
+		}
+		if err = callback(nLine, line, me); err != nil {
+			return manifest, err
 		}
 		manifest = append(manifest, me)
 	}

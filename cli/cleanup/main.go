@@ -278,7 +278,7 @@ func CheckAtLeastOneKeep(r io.Reader) error {
 			panic("RATS! missing operations in map.")
 		}
 		if len(operations) == 1 && operations[parser.Move] {
-			return fmt.Errorf(`Line %d: %s\nThere should be at least one "keep" operation for this hash, but wouldn't. Correct the script and try again.`, nLine, line)
+			return fmt.Errorf("Error: there should be at least one \"keep\" operation per hash. L%d: %s", nLine, line)
 		}
 		return nil
 	})

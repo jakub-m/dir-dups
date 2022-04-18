@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"greasytoad/cleanup/parser"
 	"greasytoad/collections"
+	"greasytoad/log"
 	"io"
-	"log"
 	"strings"
 )
 

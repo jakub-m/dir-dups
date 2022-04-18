@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	libhash "greasytoad/hash"
+	"greasytoad/log"
 	strings "greasytoad/strings"
 	"io/fs"
 	"io/ioutil"
-	"log"
 	gopath "path"
 	"sort"
 )
@@ -80,7 +80,7 @@ func getOptions() options {
 		log.Fatalf("bad hash option: %s", hashFuncSelect)
 	}
 	if len(flag.Args()) != 1 {
-		log.Fatal("expected dir path as a first argument")
+		log.Fatalf("expected dir path as a first argument")
 	}
 	opts.startPath = flag.Arg(0)
 	return opts

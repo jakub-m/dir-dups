@@ -8,11 +8,6 @@ import (
 )
 
 func TestMinlang(t *testing.T) {
-	IN := `#
-keep	h111	foo
-keep	h111	bar
-keep	h111	baz
-`
 	tcs := []struct {
 		name   string
 		in     string
@@ -21,7 +16,11 @@ keep	h111	baz
 	}{
 		{
 			name: "a",
-			in:   IN,
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
 			script: `
 if "foo" and "bar" as x then move x
 `,
@@ -33,15 +32,27 @@ keep	h111	baz
 		},
 		{
 			name: "b",
-			in:   IN,
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
 			script: `
 if "quux" as x then move x
 `,
-			out: IN,
+			out: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
 		},
 		{
 			name: "c",
-			in:   IN,
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
 			script: `
 if "bar" as y then move y
 `,
@@ -53,7 +64,11 @@ keep	h111	baz
 		},
 		{
 			name: "d",
-			in:   IN,
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
 			script: `
 if "foo" as x then move x
 if "bar" as y then move y
@@ -103,6 +118,38 @@ keep	h111	a1
 keep	h111	a2
 move	h111	b1
 move	h111	b2
+`,
+		},
+		{
+			name: "g",
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
+			script: `
+if "foo" then move other
+`,
+			out: `#
+keep	h111	foo
+move	h111	bar
+move	h111	baz
+`,
+		},
+		{
+			name: "h",
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
+			script: `
+if "foo" as other then move other
+`,
+			out: `#
+move	h111	foo
+keep	h111	bar
+keep	h111	baz
 `,
 		},
 	}

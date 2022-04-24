@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"greasytoad/cleanup/parser"
-	"greasytoad/collections"
+	coll "greasytoad/collections"
 	"greasytoad/log"
 	"io"
 	"strings"
 )
+
+const other = "other"
 
 func ReadScript(r io.Reader) (Script, error) {
 	par := parser.GetMinilangParser()
@@ -125,7 +127,7 @@ type instruction struct {
 
 // apply returns those input Manifest entires that an action was executed upon.
 func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
-	if !collections.All(ments, func(m ManifestEntry) bool { return m.Hash == ments[0].Hash }) {
+	if !coll.All(ments, func(m ManifestEntry) bool { return m.Hash == ments[0].Hash }) {
 		log.Fatalf("RATS! Assumed that manifest entries have the same hash: %v", ments)
 	}
 
@@ -153,6 +155,22 @@ func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
 		}
 	}
 
+	// Handle "other" only if there is a match, and also if "other" was not used as an alias for the match.
+	isOtherUsed := coll.Any(matchingEntries, func(t mentWithAlias) bool { return t.alias == other })
+	if !isOtherUsed {
+		otherEntries := []mentWithAlias{}
+		for _, ment := range ments {
+			hadMatch := coll.Any(matchingEntries, func(mewa mentWithAlias) bool { return mewa.ment == ment })
+			if !hadMatch {
+				otherEntries = append(otherEntries, mentWithAlias{
+					ment:  ment,
+					alias: other,
+				})
+			}
+		}
+		matchingEntries = append(matchingEntries, otherEntries...)
+	}
+
 	// Now apply actions to aliases
 	mentsWithAppliedActions := []ManifestEntry{}
 	for _, action := range s.inode.Actions {
@@ -168,8 +186,8 @@ func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
 	// Figure if the same manifest entry got two distinct actions. If yes then return an error, if no, then return de-duplicated list of manifest entries.
 	result := []ManifestEntry{}
 	for _, ment := range ments {
-		matchingMents := collections.FilterSlice(mentsWithAppliedActions, func(ma ManifestEntry) bool { return ma.Path == ment.Path })
-		matchingMents = collections.Deduplicate(matchingMents)
+		matchingMents := coll.FilterSlice(mentsWithAppliedActions, func(ma ManifestEntry) bool { return ma.Path == ment.Path })
+		matchingMents = coll.Deduplicate(matchingMents)
 		if len(matchingMents) > 1 {
 			return ments, fmt.Errorf(`single instruction "%s" produced contradictory actions: %v`, s.line, matchingMents)
 		}

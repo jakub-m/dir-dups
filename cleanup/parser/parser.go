@@ -28,7 +28,10 @@ func GetMinilangParser() par.Parser {
 	}
 
 	matchExpr := par.Seq(
-		par.QuotedString().Keep(),
+		par.FirstOf(
+			par.QuotedString().Keep(),
+			par.Literal("other").Keep(),
+		),
 		optionalAlias,
 	).WithEvaluator(matchEvaluator)
 

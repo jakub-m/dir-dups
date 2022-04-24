@@ -98,7 +98,6 @@ func GetMinilangParser() par.Parser {
 	).WithEvaluator(actionsEvaluator)
 
 	instructionEvaluator := func(args []any) (par.AstNode, error) {
-		print(args)
 		return InstructionNode{
 			Matches: par.OneWithType[[]MatchWithAlias](args),
 			Actions: par.OneWithType[[]ActionForAlias](args),

@@ -155,7 +155,7 @@ func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
 		}
 	}
 
-	// Handle "other" only if there is a match, and also if "other" was not used as an alias for the match.
+	// Handle "other" alias only if there is a match, and also if "other" was not used as an alias for the match.
 	isOtherUsed := coll.Any(matchingEntries, func(t mentWithAlias) bool { return t.alias == other })
 	if !isOtherUsed {
 		otherEntries := []mentWithAlias{}

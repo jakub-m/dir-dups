@@ -152,6 +152,38 @@ keep	h111	bar
 keep	h111	baz
 `,
 		},
+		{
+			name: "i",
+			in: `#
+keep	h111	foo
+keep	h111	bar
+keep	h111	baz
+`,
+			script: `
+if "foo" and other then move other
+`,
+			out: `#
+keep	h111	foo
+move	h111	bar
+move	h111	baz
+`,
+		},
+		{
+			name: "j",
+			in: `#
+keep	h111	afoo
+keep	h111	abar
+keep	h111	abaz
+`,
+			script: `
+if "a" and other then move other
+`,
+			out: `#
+keep	h111	afoo
+keep	h111	abar
+keep	h111	abaz
+`,
+		},
 	}
 
 	for _, tc := range tcs {

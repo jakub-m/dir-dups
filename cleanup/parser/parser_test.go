@@ -67,6 +67,10 @@ func TestParsers(t *testing.T) {
 			in: `if "foo"  then keep other`,
 			ok: true,
 		},
+		{
+			in: `if "foo" and other then move other`,
+			ok: true,
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.in, func(t *testing.T) {

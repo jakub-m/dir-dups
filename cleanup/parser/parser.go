@@ -23,7 +23,7 @@ func GetMinilangParser() par.Parser {
 			alias = args[1].(string)
 		}
 		_ = alias
-		m := []MatchWithAlias{{Match: pattern, Alias: alias}}
+		m := []MatchWithAlias{{Match: pattern, Alias: alias}} // TODO add handling "other"
 		return m, nil
 	}
 

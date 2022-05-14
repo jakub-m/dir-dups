@@ -22,7 +22,7 @@ func (p Parser) ParseString(s string) (AstNode, ErrorWithCursor) {
 	startCur := Cursor{s, 0}
 	cur, node, err := p.Tokenizer.Tokenize(startCur)
 	if !cur.IsEnd() {
-		return nil, NewErrorWithCursor(cur, "did not parse whole input")
+		return nil, NewErrorWithCursor(cur, fmt.Sprintf("did not parse whole input: %s", err))
 	}
 	return node, err
 }
@@ -136,13 +136,15 @@ type FirstOfTokenizer struct {
 }
 
 func (t FirstOfTokenizer) Tokenize(cur Cursor) (Cursor, AstNode, ErrorWithCursor) {
+	errorStrings := []string{}
 	for _, tok := range t.Tokenizers {
 		nextCur, ast, err := tok.Tokenize(cur)
 		if err == nil {
 			return nextCur, ast, nil
 		}
+		errorStrings = append(errorStrings, err.Error())
 	}
-	return cur, nil, NewErrorWithCursor(cur, "could not continue")
+	return cur, nil, NewErrorWithCursor(cur, fmt.Sprintf("could not continue: %s", strings.Join(errorStrings, ", ")))
 }
 
 func (t FirstOfTokenizer) String() string {

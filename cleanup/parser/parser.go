@@ -5,6 +5,8 @@ import (
 	par "greasytoad/parser"
 )
 
+const other = "other"
+
 func GetMinilangParser() par.Parser {
 	identifier := par.Regex(`[a-zA-Z][a-zA-Z_0-9]*`).Keep()
 
@@ -19,27 +21,31 @@ func GetMinilangParser() par.Parser {
 
 	matchEvaluator := func(args []any) (par.AstNode, error) {
 		pattern := ""
+		isOther := false
 		switch p := args[0].(type) {
 		case string:
-			pattern = p
+			if p != other {
+				return nil, fmt.Errorf("unexpected literal: %s", pattern)
+			}
+			isOther = true
 		case par.QuotedStringAstNode:
 			pattern = string(p)
 		default:
-			panic(fmt.Sprintf("unexpected type for value: %+v", p))
+			return nil, fmt.Errorf("unexpected type for value: %+v", p)
 		}
 		alias := ""
 		if args[1] != par.NilAstNode {
 			alias = args[1].(string)
 		}
 		_ = alias
-		m := []MatchWithAlias{{Match: pattern, Alias: alias}} // TODO add handling "other"
+		m := []MatchWithAlias{{Match: pattern, Alias: alias, MatchOther: isOther}} // TODO add handling "other"
 		return m, nil
 	}
 
 	matchExpr := par.Seq(
 		par.FirstOf(
 			par.QuotedString().Keep(),
-			par.Literal("other").Keep(),
+			par.Literal(other).Keep(),
 		),
 		optionalAlias,
 	).WithEvaluator(matchEvaluator)
@@ -58,7 +64,7 @@ func GetMinilangParser() par.Parser {
 		par.WhiteSpace,
 		par.Literal("and"),
 		par.WhiteSpace,
-		matchExprRecurRef,
+		matchExprRecurRef, // conditionExpr
 	).WithEvaluator(matchRecurEvaluator)
 
 	conditionExpr := par.FirstOf(
@@ -138,8 +144,9 @@ type ActionForAlias struct {
 }
 
 type MatchWithAlias struct {
-	Match string
-	Alias string
+	Match      string
+	Alias      string
+	MatchOther bool
 }
 
 type ManifestOperation string

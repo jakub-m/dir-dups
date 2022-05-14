@@ -408,9 +408,12 @@ func (t *RefTokenizer) Set(tok Tokenizer) {
 
 var _ Tokenizer = (*RefTokenizer)(nil)
 
+type QuotedStringAstNode string
+
 func QuotedString() *QuotedStringTokenizer {
 	rt := Regex(`"(?:[^"\\]|\\.)*"`).WithEvaluator(func(s any) (AstNode, error) {
-		return strconv.Unquote(s.(string))
+		u, err := strconv.Unquote(s.(string))
+		return QuotedStringAstNode(u), err
 	})
 	return &QuotedStringTokenizer{rt: rt, ev: NilEvaluator}
 }

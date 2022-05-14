@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	par "greasytoad/parser"
 )
 
@@ -17,7 +18,15 @@ func GetMinilangParser() par.Parser {
 	)
 
 	matchEvaluator := func(args []any) (par.AstNode, error) {
-		pattern := args[0].(string)
+		pattern := ""
+		switch p := args[0].(type) {
+		case string:
+			pattern = p
+		case par.QuotedStringAstNode:
+			pattern = string(p)
+		default:
+			panic(fmt.Sprintf("unexpected type for value: %+v", p))
+		}
 		alias := ""
 		if args[1] != par.NilAstNode {
 			alias = args[1].(string)

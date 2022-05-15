@@ -137,44 +137,56 @@ func (s instruction) apply(ments []ManifestEntry) ([]ManifestEntry, error) {
 		ment  ManifestEntry
 		alias string
 	}
-	matchingEntries := []mentWithAlias{}
-	for _, matchWithAlias := range s.inode.Matches {
-		manifestEntryHasMatch := false
-		for _, ment := range ments {
-			if strings.Contains(ment.Path, matchWithAlias.Match) {
-				matchingEntries = append(matchingEntries, mentWithAlias{
-					ment:  ment,
-					alias: matchWithAlias.Alias,
+	matchingManifestEntries := []mentWithAlias{}
+	isMatchOther := false
+	for _, instrMatchWithAlias := range s.inode.Matches {
+		if instrMatchWithAlias.MatchOther {
+			// If there is `if ... and other then...`, here we mark that there is such "other" to evaluate later if there was indeed
+			// a manifest entry not matched by other parts of the instruction.
+			isMatchOther = true
+			continue
+		}
+		instructionHasSuccessfulMatch := false
+		for _, manifestEntry := range ments {
+			if strings.Contains(manifestEntry.Path, instrMatchWithAlias.Match) {
+				matchingManifestEntries = append(matchingManifestEntries, mentWithAlias{
+					ment:  manifestEntry,
+					alias: instrMatchWithAlias.Alias,
 				})
-				manifestEntryHasMatch = true
+				instructionHasSuccessfulMatch = true
 			}
 		}
-		if !manifestEntryHasMatch {
-			// some manifest entry did not have a match. It's ok.
+		if !instructionHasSuccessfulMatch {
+			// Some manifest entry did not have a match. It's ok.
 			return []ManifestEntry{}, nil
 		}
 	}
 
-	// Handle "other" alias only if there is a match, and also if "other" was not used as an alias for the match.
-	isOtherUsed := coll.Any(matchingEntries, func(t mentWithAlias) bool { return t.alias == other })
-	if !isOtherUsed {
-		otherEntries := []mentWithAlias{}
-		for _, ment := range ments {
-			hadMatch := coll.Any(matchingEntries, func(mewa mentWithAlias) bool { return mewa.ment == ment })
-			if !hadMatch {
-				otherEntries = append(otherEntries, mentWithAlias{
-					ment:  ment,
-					alias: other,
-				})
-			}
+	otherEntries := []mentWithAlias{}
+	for _, ment := range ments {
+		hadMatch := coll.Any(matchingManifestEntries, func(mewa mentWithAlias) bool { return mewa.ment == ment })
+		if !hadMatch {
+			otherEntries = append(otherEntries, mentWithAlias{
+				ment:  ment,
+				alias: other,
+			})
 		}
-		matchingEntries = append(matchingEntries, otherEntries...)
 	}
+
+	// Here handle "other" match as in `if "foo" and "bar" and other`. Such "other" match means that there must
+	// be manifest entries that do not match other matches.
+	if isMatchOther && len(otherEntries) == 0 {
+		// The instruction wants other and there is no "other", so stop now.
+		return []ManifestEntry{}, nil
+
+	}
+
+	matchingManifestEntries = append(matchingManifestEntries, otherEntries...)
 
 	// Now apply actions to aliases
 	mentsWithAppliedActions := []ManifestEntry{}
 	for _, action := range s.inode.Actions {
-		for _, mentWithAlias := range matchingEntries {
+		for _, mentWithAlias := range matchingManifestEntries {
 			if action.Alias != "" && action.Alias == mentWithAlias.alias {
 				m := mentWithAlias.ment
 				m.Operation = action.Action

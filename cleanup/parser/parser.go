@@ -37,8 +37,13 @@ func GetMinilangParser() par.Parser {
 		if args[1] != par.NilAstNode {
 			alias = args[1].(string)
 		}
-		_ = alias
-		m := []MatchWithAlias{{Match: pattern, Alias: alias, MatchOther: isOther}} // TODO add handling "other"
+		if alias == other {
+			return nil, fmt.Errorf("cannot use \"other\" as alias")
+		}
+		if isOther && alias != "" {
+			return nil, fmt.Errorf("\"other\" cannot have an alias")
+		}
+		m := []MatchWithAlias{{Match: pattern, Alias: alias, MatchOther: isOther}}
 		return m, nil
 	}
 

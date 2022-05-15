@@ -137,22 +137,6 @@ move	h111	baz
 `,
 		},
 		{
-			name: "h",
-			in: `#
-keep	h111	foo
-keep	h111	bar
-keep	h111	baz
-`,
-			script: `
-if "foo" as other then move other
-`,
-			out: `#
-move	h111	foo
-keep	h111	bar
-keep	h111	baz
-`,
-		},
-		{
 			name: "i",
 			in: `#
 keep	h111	foo
@@ -177,6 +161,22 @@ keep	h111	abaz
 `,
 			script: `
 if "a" and other then move other
+`,
+			out: `#
+keep	h111	afoo
+keep	h111	abar
+keep	h111	abaz
+`,
+		},
+		{
+			name: "k",
+			in: `#
+keep	h111	afoo
+keep	h111	abar
+keep	h111	abaz
+`,
+			script: `
+if "a" as a and other then move a
 `,
 			out: `#
 keep	h111	afoo
